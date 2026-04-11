@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌿 HanapDamo Mobile
+# 🌿 HanapMedisina Mobile
 **An offline-first, real-time machine learning botanical scanner.**
 
 [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](#)
