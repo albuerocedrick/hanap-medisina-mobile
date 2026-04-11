@@ -62,97 +62,90 @@ Before cloning this project, ensure your local development environment is prepar
 
 ---
 
-## 🛠 Installation & Setup
-
-**1. Clone the repository and install dependencies:**
-```bash
+🛠 Installation & Setup
+1. Clone the repository and install dependencies:
+code
+Bash
 git clone https://github.com/YOUR_USERNAME/hanap-medisina-mobile.git
 cd hanap-medisina-mobile
 npm install
 2. Configure Local Android SDK Path:
-Because we do not upload private system paths to GitHub, you must manually point the app to your SDK. Create a file at android/local.properties and add:
-
+Since private system paths are not tracked in version control, you must manually point the project to your Android SDK. Create a file at android/local.properties and add the following:
 For Windows:
-
+code
 Properties
 sdk.dir=C:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
-For Mac:
-
+For macOS/Linux:
+code
 Properties
 sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 📱 Running the App (Local Development)
-Because this app utilizes native C++ camera plugins and custom metro.config.js setups for local .tflite models, you must compile the native code and start the JS bundler separately.
-
-Step 1: Start the Metro Server (Terminal 1) The -c flag forces Metro to clear its cache and correctly bundle the ML models.
-
+Because this app utilizes native C++ camera plugins and custom metro.config.js setups for local .tflite models, you must compile the native code and start the JS bundler separately. Note: A physical Android device is required.
+Step 1: Start the Metro Server (Terminal 1)
+The -c flag forces Metro to clear its cache and correctly bundle the ML models.
+code
 Bash
 npx expo start -c
 Step 2: Build the Native App (Terminal 2)
-
+code
 Bash
 npx expo run:android
 💡 Connecting to a Local Backend?
-If your Express server is running on localhost, use ADB to reverse-proxy the port so your physical phone can reach it.
-
+If your Express server is running on localhost:8000, use ADB to reverse-proxy the port so your physical phone can reach the server.
+code
 Bash
 adb reverse tcp:8000 tcp:8000
 🗺 Development Roadmap
 ✅ Phase 0: Foundation
 
-[x] Configure Firebase (Firestore/Auth) and generate serviceAccountKey.json.
+Configure Firebase (Firestore/Auth) and generate serviceAccountKey.json.
 
-[x] Initialize Expo Tabs Template (Library, Scan, History, Profile).
+Initialize Expo Tabs Template (Library, Scan, History, Profile).
 
-[x] Initialize Express Server skeleton and link to Admin SDK.
+Initialize Express Server skeleton and link to Admin SDK.
 
-[x] Establish Frontend-to-Backend bridge via Axios.
-
+Establish Frontend-to-Backend bridge via Axios.
 ✅ Phase 1: The Offline Core (Current)
 
-[x] Configure Native Camera permissions and UI.
+Configure Native Camera permissions and UI.
 
-[x] Integrate TensorFlow Lite model natively.
+Integrate TensorFlow Lite model natively.
 
-[x] Build image translation layer (JPEG to Float32Array).
+Build image translation layer (JPEG to Float32Array).
 
-[x] Output accurate confidence percentages entirely offline.
-
+Output accurate confidence percentages entirely offline.
 ⏳ Phase 2: Authentication & Security
 
-[ ] Implement Firebase Email/Password Auth on frontend.
+Implement Firebase Email/Password Auth on frontend.
 
-[ ] Attach Firebase ID Tokens to Axios headers.
+Attach Firebase ID Tokens to Axios headers.
 
-[ ] Build Express middleware to validate tokens before database writes.
-
+Build Express middleware to validate tokens before database writes.
 🚀 Phase 3: The Library and Local Storage
 
-[ ] Connect Library tab for high-speed direct Firestore reads.
+Connect Library tab for high-speed direct Firestore reads.
 
-[ ] Build "Save for Offline" feature using local storage.
+Build "Save for Offline" feature using local storage.
 
-[ ] Implement conditional rendering (Cloud Cloud vs. Saved Offline Library).
-
+Implement conditional rendering (Cloud Library vs. Saved Offline Library).
 🔄 Phase 4: Sync Engine (Offline & Online)
 
-[ ] Integrate Network Monitoring (NetInfo).
+Integrate Network Monitoring (NetInfo).
 
-[ ] Build Zustand Sync Queue for pending offline scans.
+Build Zustand Sync Queue for pending offline scans.
 
-[ ] Develop "Sync Handshake" to push queued scans to Express API.
-
+Develop "Sync Handshake" to push queued scans to Express API.
 📊 Phase 5: History & Profile
 
-[ ] Merge Local Scans and Cloud Scans into a unified History Tab.
+Merge Local Scans and Cloud Scans into a unified History Tab.
 
-[ ] Build Profile UI (Logout, Account Details).
+Build Profile UI (Logout, Account Details).
 
-[ ] Final NativeWind UI/UX Polish.
-
+Final NativeWind UI/UX Polish.
 📦 Phase 6: Production & Deployment
 
-[ ] Deploy Express Server to cloud hosting (Render/Railway).
+Deploy Express Server to cloud hosting (Render/Railway).
 
-[ ] Point Axios baseURL to live production URL.
+Point Axios baseURL to live production URL.
 
-[ ] Generate final production APK via EAS Build (eas build -p android --profile preview).
+Generate final production APK via EAS Build (eas build -p android --profile preview).
