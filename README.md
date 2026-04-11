@@ -66,7 +66,7 @@ Before cloning this project, ensure your local development environment is prepar
 
 **1. Clone the repository and install dependencies:**
 ```bash
-git clone [https://github.com/YOUR_USERNAME/hanap-medisina-mobile.git](https://github.com/YOUR_USERNAME/hanap-medisina-mobile.git)
+git clone https://github.com/albuerocedrick/hanap-medisina-mobile.git
 cd hanap-medisina-mobile
 npm install
 ```
@@ -94,14 +94,15 @@ Because this app utilizes native C++ camera plugins and custom `metro.config.js`
 npx expo start -c
 ```
 
-**Step 2: Build the Native App (Terminal 2)** ```bash
+**Step 2: Build the Native App (Terminal 2)** 
+```bash
 npx expo run:android
 ```
 
 > **💡 Connecting to a Local Backend?**
 > If your Express server is running on `localhost`, use ADB to reverse-proxy the port so your physical phone can reach it.
 > ```bash
-> adb reverse tcp:8000 tcp:8000
+> adb reverse tcp:3000 tcp:3000
 > ```
 
 ---
@@ -110,6 +111,7 @@ npx expo run:android
 
 <details open>
 <summary><b>Click to collapse/expand phases</b></summary>
+  
 <br>
 
 **✅ Phase 0: Foundation**
