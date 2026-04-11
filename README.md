@@ -66,7 +66,7 @@ Before cloning this project, ensure your local development environment is prepar
 
 **1. Clone the repository and install dependencies:**
 ```bash
-git clone [https://github.com/YOUR_USERNAME/hanap-medisina-mobile.git](https://github.com/YOUR_USERNAME/hanap-medisina-mobile.git)
+git clone https://github.com/YOUR_USERNAME/hanap-medisina-mobile.git
 cd hanap-medisina-mobile
 npm install
 2. Configure Local Android SDK Path:
@@ -87,64 +87,72 @@ Step 1: Start the Metro Server (Terminal 1) The -c flag forces Metro to clear it
 
 Bash
 npx expo start -c
-Step 2: Build the Native App (Terminal 2) ```bash
+Step 2: Build the Native App (Terminal 2)
+
+Bash
 npx expo run:android
+💡 Connecting to a Local Backend?
+If your Express server is running on localhost, use ADB to reverse-proxy the port so your physical phone can reach it.
 
+Bash
+adb reverse tcp:8000 tcp:8000
+🗺 Development Roadmap
+✅ Phase 0: Foundation
 
-> **💡 Connecting to a Local Backend?**
-> If your Express server is running on `localhost`, use ADB to reverse-proxy the port so your physical phone can reach it.
-> ```bash
-> adb reverse tcp:8000 tcp:8000
-> ```
+[x] Configure Firebase (Firestore/Auth) and generate serviceAccountKey.json.
 
----
+[x] Initialize Expo Tabs Template (Library, Scan, History, Profile).
 
-## 🗺 Development Roadmap
+[x] Initialize Express Server skeleton and link to Admin SDK.
 
-<details open>
-<summary><b>Click to collapse/expand phases</b></summary>
-<br>
+[x] Establish Frontend-to-Backend bridge via Axios.
 
-**✅ Phase 0: Foundation**
-- [x] Configure Firebase (Firestore/Auth) and generate `serviceAccountKey.json`.
-- [x] Initialize Expo Tabs Template (Library, Scan, History, Profile).
-- [x] Initialize Express Server skeleton and link to Admin SDK.
-- [x] Establish Frontend-to-Backend bridge via Axios.
+✅ Phase 1: The Offline Core (Current)
 
-**✅ Phase 1: The Offline Core (Current)**
-- [x] Configure Native Camera permissions and UI.
-- [x] Integrate TensorFlow Lite model natively.
-- [x] Build image translation layer (JPEG to Float32Array).
-- [x] Output accurate confidence percentages entirely offline.
+[x] Configure Native Camera permissions and UI.
 
-**⏳ Phase 2: Authentication & Security**
-- [ ] Implement Firebase Email/Password Auth on frontend.
-- [ ] Attach Firebase ID Tokens to Axios headers.
-- [ ] Build Express middleware to validate tokens before database writes.
+[x] Integrate TensorFlow Lite model natively.
 
-**🚀 Phase 3: The Library and Local Storage**
-- [ ] Connect Library tab for high-speed direct Firestore reads.
-- [ ] Build "Save for Offline" feature using local storage.
-- [ ] Implement conditional rendering (Cloud Library vs. Saved Offline Library).
+[x] Build image translation layer (JPEG to Float32Array).
 
-**🔄 Phase 4: Sync Engine (Offline & Online)**
-- [ ] Integrate Network Monitoring (NetInfo).
-- [ ] Build Zustand Sync Queue for pending offline scans.
-- [ ] Develop "Sync Handshake" to push queued scans to Express API.
+[x] Output accurate confidence percentages entirely offline.
 
-**📊 Phase 5: History & Profile**
-- [ ] Merge Local Scans and Cloud Scans into a unified History Tab.
-- [ ] Build Profile UI (Logout, Account Details).
-- [ ] Final NativeWind UI/UX Polish.
+⏳ Phase 2: Authentication & Security
 
-**📦 Phase 6: Production & Deployment**
-- [ ] Deploy Express Server to cloud hosting (Render/Railway).
-- [ ] Point Axios baseURL to live production URL.
-- [ ] Generate final production APK via EAS Build (`eas build -p android --profile preview`).
+[ ] Implement Firebase Email/Password Auth on frontend.
 
-</details>
+[ ] Attach Firebase ID Tokens to Axios headers.
 
----
-<div align="center">
-  <i>Developed for HanapDamo Mobile</i>
-</div>
+[ ] Build Express middleware to validate tokens before database writes.
+
+🚀 Phase 3: The Library and Local Storage
+
+[ ] Connect Library tab for high-speed direct Firestore reads.
+
+[ ] Build "Save for Offline" feature using local storage.
+
+[ ] Implement conditional rendering (Cloud Cloud vs. Saved Offline Library).
+
+🔄 Phase 4: Sync Engine (Offline & Online)
+
+[ ] Integrate Network Monitoring (NetInfo).
+
+[ ] Build Zustand Sync Queue for pending offline scans.
+
+[ ] Develop "Sync Handshake" to push queued scans to Express API.
+
+📊 Phase 5: History & Profile
+
+[ ] Merge Local Scans and Cloud Scans into a unified History Tab.
+
+[ ] Build Profile UI (Logout, Account Details).
+
+[ ] Final NativeWind UI/UX Polish.
+
+📦 Phase 6: Production & Deployment
+
+[ ] Deploy Express Server to cloud hosting (Render/Railway).
+
+[ ] Point Axios baseURL to live production URL.
+
+[ ] Generate final production APK via EAS Build (eas build -p android --profile preview).
