@@ -22,7 +22,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.hanapmedisinamobile"
     },
     "web": {
       "bundler": "metro",
@@ -30,7 +31,17 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "react-native-fast-tflite",
+      "react-native-vision-camera",
+      "expo-asset",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "HanapMedisina needs camera access to scan and identify medicinal plants.",
+          "enableMicrophonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
