@@ -43,5 +43,8 @@ yarn-error.*
 # local property
 android/local.properties
 
+# google services
+google-services.json
+
 # environment variables
 .env

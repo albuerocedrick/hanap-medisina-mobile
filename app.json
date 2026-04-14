@@ -23,7 +23,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.hanapmedisinamobile"
+      "package": "com.sdnp.hanapmedisina",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
