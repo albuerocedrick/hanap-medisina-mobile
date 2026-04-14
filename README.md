@@ -126,10 +126,10 @@ npx expo run:android
 - [x] Build image translation layer (JPEG to Float32Array).
 - [x] Output accurate confidence percentages entirely offline.
 
-**⏳ Phase 2: Authentication & Security**
-- [ ] Implement Firebase Email/Password Auth on frontend.
-- [ ] Attach Firebase ID Tokens to Axios headers.
-- [ ] Build Express middleware to validate tokens before database writes.
+**✅ Phase 2: Authentication & Security**
+- [x] Implement Firebase Email/Password Auth on frontend.
+- [x] Attach Firebase ID Tokens to Axios headers.
+- [x] Build Express middleware to validate tokens before database writes.
 
 **🚀 Phase 3: The Library and Local Storage**
 - [ ] Connect Library tab for high-speed direct Firestore reads.
