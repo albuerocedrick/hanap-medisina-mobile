@@ -33,18 +33,18 @@
 
 ### 🧠 Machine Learning & Camera Engine
 * **TensorFlow Lite:** Runs the `.tflite` image classification model directly on the device.
-* **Vision Camera (v4):** Captures high-resolution video frames on native threads.
+* **Vision Camera (v4) & Image Manipulator:** Captures high-resolution video frames on native threads and pre-processes (resizes/crops) them for the model.
 * **JPEG-JS & Buffer:** Manually decodes captured images into raw RGB pixels, translating them into the exact `-1.0` to `1.0` Float32 arrays required by the AI.
 
 ### ☁️ Backend & Database (Three-Tier Architecture)
 * **Express.js & Node.js:** Custom backend API handling all secure database write operations.
-* **Firebase (Firestore/Auth):** Centralized cloud database and identity provider.
-* **Firebase Admin SDK:** Backend middleware to securely verify user ID tokens.
+* **Firebase (Firestore/Auth):** Centralized cloud database and identity provider, utilizing @react-native-google-signin/google-signin for user access.
+* **Firebase Admin SDK & Secure Store:** Backend middleware to securely verify user ID tokens, with expo-secure-store safely managing local session data.
 * **Axios:** Frontend HTTP client bridging the mobile app to the Express API.
 
 ### 💾 State & Offline Management
 * **Zustand:** Global state management for tracking pending offline scans.
-* **Local Storage:** Persists "Favorited" library plants and queued scan results when the device loses network connectivity.
+* **AsyncStorage & File System:** Utilizes @react-native-async-storage/async-storage for persisting favorite items/queued scans, and expo-file-system for managing local model caching when the device loses network connectivity.
 * **Network Monitoring:** Real-time tracking to dynamically toggle between Cloud-Read and Offline-Read modes.
 
 ---
