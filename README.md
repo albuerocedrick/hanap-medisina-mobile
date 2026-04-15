@@ -38,13 +38,13 @@
 
 ### ☁️ Backend & Database (Three-Tier Architecture)
 * **Express.js & Node.js:** Custom backend API handling all secure database write operations.
-* **Firebase (Firestore/Auth):** Centralized cloud database and identity provider, utilizing @react-native-google-signin/google-signin for user access.
+* **Firebase (Firestore/Auth):** Centralized cloud database and identity provider, utilizing (`@react-native-google-signin/google-signin for user access`).
 * **Firebase Admin SDK & Secure Store:** Backend middleware to securely verify user ID tokens, with expo-secure-store safely managing local session data.
 * **Axios:** Frontend HTTP client bridging the mobile app to the Express API.
 
 ### 💾 State & Offline Management
 * **Zustand:** Global state management for tracking pending offline scans.
-* **AsyncStorage & File System:** Utilizes @react-native-async-storage/async-storage for persisting favorite items/queued scans, and expo-file-system for managing local model caching when the device loses network connectivity.
+* **AsyncStorage & File System:** Utilizes (`@react-native-async-storage/async-storage`) for persisting favorite items/queued scans, and (`expo-file-system`) for managing local model caching when the device loses network connectivity.
 * **Network Monitoring:** Real-time tracking to dynamically toggle between Cloud-Read and Offline-Read modes.
 
 ---
