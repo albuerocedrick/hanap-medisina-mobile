@@ -1,9 +1,9 @@
 // hanap-medicina-mobile/app/(tabs)/index.tsx
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-import client from "../../src/api/client"; // Import the axios client you made
+import client from "../../../src/api/client"; // Import the axios client you made
 
-export default function HomeScreen() {
+export default function LibraryScreen() {
   const [connectionStatus, setConnectionStatus] = useState(
     "Testing connection...",
   );
