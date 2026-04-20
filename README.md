@@ -131,20 +131,22 @@ npx expo run:android
 - [x] Attach Firebase ID Tokens to Axios headers.
 - [x] Build Express middleware to validate tokens before database writes.
 
-**🚀 Phase 3: The Library and Local Storage**
-- [ ] Connect Library tab for high-speed direct Firestore reads.
-- [ ] Build "Save for Offline" feature using local storage.
-- [ ] Implement conditional rendering (Cloud Library vs. Saved Offline Library).
+**🚀 Phase 3: The Deep Library & Offline Favorites**
+- [ ] Direct Read Feed: Connect the main Library tab directly to Firestore for high-speed, real-time list rendering, including the Search Bar and Filter Pills.
+- [ ] Nested Plant Details: Build the dynamic [id].tsx screen with the three core sub-tabs: Details (scientific names, facts, warnings), Research (studies, references), and Compare (look-alikes).
+- [ ] Nested Plant Details: Build the dynamic [id].tsx screen with the three core sub-tabs: Details (scientific names, facts, warnings), Research (studies, references), and Compare (look-alikes).
+- [ ] Offline Favorites: Build the "Save/Favorite" system using persistent local device storage so marked plants can be accessed when the internet is restricted.
 
-**🔄 Phase 4: Sync Engine (Offline & Online)**
-- [ ] Integrate Network Monitoring (NetInfo).
-- [ ] Build Zustand Sync Queue for pending offline scans.
-- [ ] Develop "Sync Handshake" to push queued scans to Express API.
+**🔄 Phase 4: Network Monitoring & Sync Engine**
+- [ ] State Detection: Integrate network monitoring to dynamically switch the app's UI between Online Mode and Offline Mode.
+- [ ] The Sync Queue: Build a persistent local queue (using Zustand + Local Storage) to save offline plant scans (image URIs + TFLite results).
+- [ ] The Sync Prompt & Handshake: Build the UI to prompt the user upon network reconnection. Upon confirmation, fire the queued data to the Express backend -> Validate -> Upload to Cloudinary -> Write to Firestore -> Clear the local queue.
 
-**📊 Phase 5: History & Profile**
-- [ ] Merge Local Scans and Cloud Scans into a unified History Tab.
-- [ ] Build Profile UI (Logout, Account Details).
-- [ ] Final NativeWind UI/UX Polish.
+**📊 Phase 5: History, Profile & Media Polish**
+- [ ] Unified History Tab: Merge locally queued scans and cloud-retrieved scans into one seamless list with filtering options. Build the detailed result analysis page for past scans.
+- [ ] Profile Tab & Stats: Build the Profile UI to display dynamic user statistics (total scans, species identified, total saved items).
+- [ ] Profile Media: Wire up Cloudinary to allow the user to securely update their profile picture via the Express backend.
+- [ ] Final Polish: Audit all NativeWind styling and ensure offline-restricted screens show proper empty states.
 
 **📦 Phase 6: Production & Deployment**
 - [ ] Deploy Express Server to cloud hosting (Render/Railway).
