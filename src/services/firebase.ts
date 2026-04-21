@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 // @ts-ignore - The function exists in the RN bundle, but TS definitions are missing it
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getAuth, initializeAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_API_KEY,
@@ -15,6 +16,8 @@ const firebaseConfig = {
 
 // 1. Initialize the core Firebase App
 const app = initializeApp(firebaseConfig);
+
+export const db = getFirestore(app);
 
 // 2. Initialize Firebase Auth specifically for React Native
 // This ensures that when a user closes HanapDamo and opens it tomorrow,
