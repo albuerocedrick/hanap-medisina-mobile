@@ -38,34 +38,11 @@ import { useNetworkStore } from "./useNetworkStore";
 // TYPES
 // ─────────────────────────────────────────────
 
-/**
- * Phase 4 pre-wire: one queued offline scan.
- * Populated by the Scan tab after a TFLite identification when offline.
- * Mirrors the payload the Express backend expects on sync.
- */
-export interface ScanQueueItem {
-  /** Client-generated UUID. Used for deduplication on retry. */
-  queueId: string;
-  /** Local filesystem URI from Vision Camera. Uploaded to Cloudinary on sync. */
-  imageUri: string;
-  /** Firestore document ID of the identified plant. */
-  plantId: string;
-  /** TFLite model confidence score (0–1). */
-  confidence: number;
-  /** ISO timestamp of when the scan was performed offline. */
-  scannedAt: string;
-  /** True while a sync attempt is in progress (prevents duplicate sends). */
-  isSyncing: boolean;
-  /** Number of failed sync attempts. Phase 4 uses this for back-off logic. */
-  retryCount: number;
-}
-
 export type LibraryErrorCode =
   | "FETCH_PLANTS_FAILED"
   | "FETCH_CATEGORIES_FAILED"
   | "FAVORITES_LOAD_FAILED"
-  | "FAVORITES_SAVE_FAILED"
-  | "SYNC_QUEUE_ERROR"; // Phase 4
+  | "FAVORITES_SAVE_FAILED";
 
 export class LibraryStoreError extends Error {
   constructor(
@@ -133,14 +110,6 @@ interface LibraryState {
   plantsError: LibraryStoreError | null;
   categoriesError: LibraryStoreError | null;
   favoritesError: LibraryStoreError | null;
-
-  // ── Phase 4 Pre-wire: Sync Queue ──────────────────────────────────────────
-  /**
-   * Offline scans waiting to be uploaded when connectivity is restored.
-   * Persisted to AsyncStorage so the queue survives app restarts.
-   * Phase 3: Always an empty array. Phase 4 populates it.
-   */
-  syncQueue: ScanQueueItem[];
 }
 
 interface LibraryActions {
@@ -207,41 +176,6 @@ interface LibraryActions {
   // ── Error Management ──────────────────────────────────────────────────────
 
   clearErrors: () => void;
-
-  // ── Phase 4 Pre-wire: Sync Queue Actions ──────────────────────────────────
-
-  /**
-   * Appends a new offline scan to the persistent sync queue.
-   * Also signals useNetworkStore that pending syncs exist.
-   * Phase 3: Defined but never called — the Scan tab calls this in Phase 4.
-   */
-  addToSyncQueue: (
-    item: Omit<ScanQueueItem, "isSyncing" | "retryCount">,
-  ) => void;
-
-  /**
-   * Marks a queue item as actively syncing (prevents duplicate sends).
-   * Phase 4: Called by the sync engine before firing the Axios request.
-   */
-  markQueueItemSyncing: (queueId: string, isSyncing: boolean) => void;
-
-  /**
-   * Increments the retry counter for a failed sync item.
-   * Phase 4: Called by the sync engine on Axios/backend error.
-   */
-  incrementRetryCount: (queueId: string) => void;
-
-  /**
-   * Removes a successfully synced item from the queue.
-   * Phase 4: Called per-item after a confirmed backend write.
-   */
-  removeFromSyncQueue: (queueId: string) => void;
-
-  /**
-   * Wipes the entire queue after a full sync session completes.
-   * Phase 4: Called after all items in a batch are confirmed.
-   */
-  clearSyncQueue: () => void;
 }
 
 type LibraryStore = LibraryState & LibraryActions;
@@ -257,11 +191,6 @@ function wrapError(
   cause: unknown,
 ): LibraryStoreError {
   return new LibraryStoreError(code, message, cause);
-}
-
-/** Updates useNetworkStore's pending sync flag based on current queue length. */
-function syncPendingFlag(queueLength: number): void {
-  useNetworkStore.getState().setHasPendingSync(queueLength > 0);
 }
 
 // ─────────────────────────────────────────────
@@ -287,7 +216,6 @@ export const useLibraryStore = create<LibraryStore>()(
       plantsError: null,
       categoriesError: null,
       favoritesError: null,
-      syncQueue: [], // Phase 4: starts empty
 
       // ── Data Fetching ──────────────────────────────────────────────────────
 
@@ -506,51 +434,6 @@ export const useLibraryStore = create<LibraryStore>()(
           favoritesError: null,
         });
       },
-
-      // ── Phase 4 Pre-wire: Sync Queue ───────────────────────────────────────
-
-      addToSyncQueue: (item) => {
-        const newItem: ScanQueueItem = {
-          ...item,
-          isSyncing: false,
-          retryCount: 0,
-        };
-
-        const updatedQueue = [...get().syncQueue, newItem];
-        set({ syncQueue: updatedQueue });
-        syncPendingFlag(updatedQueue.length);
-      },
-
-      markQueueItemSyncing: (queueId, isSyncing) => {
-        set((state) => ({
-          syncQueue: state.syncQueue.map((item) =>
-            item.queueId === queueId ? { ...item, isSyncing } : item,
-          ),
-        }));
-      },
-
-      incrementRetryCount: (queueId) => {
-        set((state) => ({
-          syncQueue: state.syncQueue.map((item) =>
-            item.queueId === queueId
-              ? { ...item, retryCount: item.retryCount + 1, isSyncing: false }
-              : item,
-          ),
-        }));
-      },
-
-      removeFromSyncQueue: (queueId) => {
-        const updatedQueue = get().syncQueue.filter(
-          (item) => item.queueId !== queueId,
-        );
-        set({ syncQueue: updatedQueue });
-        syncPendingFlag(updatedQueue.length);
-      },
-
-      clearSyncQueue: () => {
-        set({ syncQueue: [] });
-        syncPendingFlag(0);
-      },
     }),
 
     // ── Persist Config ─────────────────────────────────────────────────────
@@ -562,7 +445,6 @@ export const useLibraryStore = create<LibraryStore>()(
 
       partialize: (state) => ({
         favorites: state.favorites,
-        syncQueue: state.syncQueue, // Phase 4: persists the offline scan queue
       }),
 
       /**
@@ -574,9 +456,6 @@ export const useLibraryStore = create<LibraryStore>()(
         if (!state) return;
         const restoredIds = new Set(state.favorites.map((f: Plant) => f.id));
         state.favoriteIds = restoredIds;
-
-        // Restore the pending sync flag after app restart
-        syncPendingFlag(state.syncQueue.length);
       },
     },
   ),
@@ -595,9 +474,3 @@ export const selectSearchQuery = (s: LibraryStore) => s.searchQuery;
 export const selectFavorites = (s: LibraryStore) => s.favorites;
 export const selectFavoritesCount = (s: LibraryStore) => s.favorites.length;
 export const selectFavoritesError = (s: LibraryStore) => s.favoritesError;
-
-/** Phase 4: sync queue selectors */
-export const selectSyncQueue = (s: LibraryStore) => s.syncQueue;
-export const selectSyncQueueLength = (s: LibraryStore) => s.syncQueue.length;
-export const selectPendingSyncItems = (s: LibraryStore) =>
-  s.syncQueue.filter((item) => !item.isSyncing && item.retryCount < 3);

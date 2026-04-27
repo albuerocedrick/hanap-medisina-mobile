@@ -18,6 +18,12 @@ import { useTFLite } from "../../src/hooks/useTFLite";
 import { Buffer } from "buffer";
 import * as jpeg from "jpeg-js";
 
+// 📡 Network & Sync imports
+import apiClient from "../../src/api/client";
+import { useNetworkStore } from "../../src/store/useNetworkStore";
+import { useSyncStore } from "../../src/store/useSyncStore";
+import * as FileSystem from "expo-file-system";
+
 export default function ScanScreen() {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");
@@ -29,6 +35,11 @@ export default function ScanScreen() {
     label: string;
     confidence: number;
   } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Access network status and sync queue
+  const isOnline = useNetworkStore((s) => s.isOnline);
+  const enqueueScan = useSyncStore((s) => s.enqueueScan);
 
   if (!hasPermission) {
     return (
@@ -97,11 +108,83 @@ export default function ScanScreen() {
         }
       }
 
-      // 7. Update UI
+      // 7. Update UI with the identified plant
+      const identifiedLabel = labels[maxIndex] || "Unknown";
+      const confidencePercent = maxConfidence * 100;
+
       setResult({
-        label: labels[maxIndex] || "Unknown",
-        confidence: maxConfidence * 100,
+        label: identifiedLabel,
+        confidence: confidencePercent,
       });
+
+      // 8. Save the scan result based on connectivity
+      // Vision Camera saves photos to a temp cache dir that the OS can garbage-collect.
+      // We copy the photo to a permanent location so it survives until sync.
+      const tempUri = `file://${photo.path}`;
+      const offlineDir = new FileSystem.Directory(FileSystem.Paths.document, "offline-scans");
+      if (!offlineDir.exists) {
+        offlineDir.create();
+      }
+      const permanentFile = new FileSystem.File(offlineDir, `scan_${Date.now()}.jpg`);
+      const tempFile = new FileSystem.File(tempUri);
+      tempFile.copy(permanentFile);
+
+      const originalImageUri = permanentFile.uri;
+
+      if (isOnline) {
+        // ── ONLINE: Send directly to the server ──
+        try {
+          // Build a multipart/form-data payload for our Express endpoint
+          const formData = new FormData();
+
+          // Attach the original photo as a file
+          formData.append("images", {
+            uri: originalImageUri,
+            name: `scan_${Date.now()}.jpg`,
+            type: "image/jpeg",
+          } as any);
+
+          // Attach the scan metadata as a JSON string
+          const scanData = [
+            {
+              localId: `scan_${Date.now()}`,
+              plantName: identifiedLabel,
+              confidence: confidencePercent,
+              details: "",
+              scannedAt: new Date().toISOString(),
+            },
+          ];
+          formData.append("scans", JSON.stringify(scanData));
+
+          await apiClient.post("/api/scans/sync", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+          // Upload succeeded — delete the local copy since it's now in the cloud
+          try {
+            if (permanentFile.exists) permanentFile.delete();
+          } catch {
+            // Non-critical — don't block the success flow
+          }
+
+          setSaveStatus("✅ Scan saved to cloud!");
+        } catch (uploadError) {
+          // If the server upload fails, fall back to offline queue
+          console.warn(
+            "Online upload failed, saving to offline queue:",
+            uploadError,
+          );
+          enqueueScan(originalImageUri, identifiedLabel, confidencePercent);
+          setSaveStatus("⚠️ Upload failed — saved offline");
+        }
+      } else {
+        // ── OFFLINE: Save to local queue for later sync ──
+        enqueueScan(originalImageUri, identifiedLabel, confidencePercent);
+        setSaveStatus("📱 Saved offline — will sync later");
+      }
+
+      // Auto-clear the status message after 3 seconds
+      setTimeout(() => setSaveStatus(null), 3000);
     } catch (error) {
       console.error("Inference Error:", error);
       Alert.alert("Error", "Failed to analyze plant. Please try again.");
@@ -153,6 +236,15 @@ export default function ScanScreen() {
                 Confidence: {result.confidence.toFixed(1)}%
               </Text>
             </View>
+          </View>
+        )}
+
+        {/* Save Status Banner */}
+        {saveStatus && (
+          <View className="bg-black/70 px-4 py-2 rounded-full mb-4">
+            <Text className="text-white font-semibold text-center">
+              {saveStatus}
+            </Text>
           </View>
         )}
 
