@@ -34,39 +34,34 @@ This document details the implementation steps for Phase 4, which focuses on bui
 * **Why:** We need to fetch the Firebase ID Token (`await auth.currentUser.getIdToken()`) and automatically attach it to the `Authorization: Bearer <token>` header so the server knows exactly who is sending the data.
 * **Status:** Already implemented in the existing codebase. No changes needed.
 
-### Step 6. Create Local Storage Queue (`src/store/useSyncStore.ts`)
+### Step 6. Create Local Storage Queue (`src/store/useSyncStore.ts`) ✅
 * **What we do:** Build a Zustand state management store.
-* **Why:** This store will hold an array called `syncQueue`. When the user scans a plant offline, the scan data goes here instead of to the server. We will use Zustand's `persist` middleware paired with `@react-native-async-storage/async-storage` so that even if the user closes the app, their pending scans are saved locally.
-* **Exports 3 actions:**
-  - `enqueueScan(scan)` — adds a new offline scan to the queue
-  - `dequeueScan(localId)` — removes a specific scan after it syncs successfully
-  - `clearQueue()` — empties the entire queue after a full sync
+* **Status:** Completed. Now supports background processing and progress tracking.
 
-### Step 7. Modify Scan Tab Logic (`app/(tabs)/scan.tsx`)
+### Step 7. Modify Scan Tab Logic (`app/(tabs)/scan.tsx`) ✅
 * **What we do:** Update the scan screen to actually **save** scan results after identification.
-* **Why:** Currently, after the TFLite model identifies a plant, the result only lives in React state and is lost when the user leaves the screen. We need to persist it.
-* **Logic to add after a successful scan:**
-  1. **Check if the phone is online** (using NetInfo).
-  2. **If online** → Send the scan directly to the server (`POST /api/scans/sync`) with the image and metadata, saving it to Firestore immediately.
-  3. **If offline** → Save the scan to the local Zustand queue (`enqueueScan()`) with the image URI, plant name, confidence, and timestamp.
-  4. **UI feedback** → Show a message like "Scan saved!" or "Saved offline — will sync later" so the user knows what happened.
+* **Status:** Completed. Gracefully handles online direct uploads and offline queuing.
 
-### Step 8. Build Network Listener (`src/hooks/useNetworkSync.ts`)
+### Step 8. Build Network Listener (`src/hooks/useNetworkSync.ts`) ✅
 * **What we do:** Create a custom React hook that wraps `@react-native-community/netinfo`.
-* **Why:** This hook constantly monitors the phone's internet connection. If the connection changes from "Offline" to "Online" **AND** there are items sitting in our `syncQueue`, it fires a trigger to show the sync prompt.
+* **Status:** Completed. Uses `NetInfo.fetch()` for accurate boot-time detection.
 
-### Step 9. Build the Sync UI (`src/components/SyncPromptModal.tsx`)
+### Step 9. Build the Sync UI (`src/components/global/SyncPromptModal.tsx`) ✅
 * **What we do:** Create a pop-up modal or banner component.
-* **Why:** When the custom hook detects the internet is back, this modal will appear globally asking: *"You are back online. You have X pending scans. Sync now?"*
-* **On "Sync Now":**
-  1. Bundles the pending scans from `useSyncStore` into `multipart/form-data`.
-  2. Sends them to the Express backend via Axios (`POST /api/scans/sync`).
-  3. For each successfully synced scan, calls `dequeueScan(localId)` to remove it from the queue.
-  4. Shows success/failure feedback to the user.
+* **Status:** Completed. Acts as a non-blocking trigger for background sync.
 
-### Step 10. Inject Logic into the Root (`app/_layout.tsx`)
+### Step 10. Inject Logic into the Root (`app/_layout.tsx`) ✅
 * **What we do:** Add the `useNetworkSync` hook and the `SyncPromptModal` into your root layout file.
-* **Why:** By putting it in the root layout, the app will monitor the network and be able to prompt the user to sync regardless of which tab or screen they are currently looking at.
+* **Status:** Completed. Also mounts the `SyncStatusBanner` globally.
+
+---
+
+## 🚀 Phase 4.1: Agile UX Refinement (Background Sync) ✅
+
+During testing, we identified that a blocking modal was a poor user experience. We implemented the following upgrades:
+1. **Background Service:** Moved the sync logic from the Modal into `useSyncStore.runSync()`.
+2. **Granular Progress:** Changed sync from "Batched (10)" to "One-by-One" to allow the UI to show `Uploading 1 of 5...`.
+3. **Global Status Banner:** Created `SyncStatusBanner.tsx` which slides in from the top globally, allowing the user to continue using the app while syncing happens in the background.
 
 ---
 
@@ -94,9 +89,14 @@ This document details the implementation steps for Phase 4, which focuses on bui
 │  Offline → Online detected + queue not empty?           │
 │         │                                               │
 │         ▼                                               │
-│  ┌──────────────────┐                                   │
-│  │ SyncPromptModal   │── "Sync now?" ── POST /sync      │
-│  │ appears globally  │── success? ── dequeueScan()      │
-│  └──────────────────┘                                   │
+│  ┌──────────────────┐      ┌────────────────────────┐   │
+│  │ SyncPromptModal   │──▶  │ useSyncStore.runSync() │───┼──▶ POST /sync
+│  │ (Non-blocking)    │     └──────────┬─────────────┘   │
+│  └──────────────────┘                 │                 │
+│                                       ▼                 │
+│                            ┌────────────────────────┐   │
+│                            │   SyncStatusBanner     │   │
+│                            │ (Background Progress)  │   │
+│                            └────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
 ```
