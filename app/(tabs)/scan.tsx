@@ -1,209 +1,294 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as ImageManipulator from "expo-image-manipulator";
-import React, { useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-} from "react-native-vision-camera";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useTFLite } from "../../src/hooks/useTFLite";
 
-// 📦 REQUIRED FOR JPEG DECODING
 import { Buffer } from "buffer";
+import * as FileSystem from "expo-file-system";
 import * as jpeg from "jpeg-js";
 
-// 📡 Network & Sync imports
 import apiClient from "../../src/api/client";
+import { useCameraStore } from "../../src/store/useCameraStore";
 import { useNetworkStore } from "../../src/store/useNetworkStore";
 import { useSyncStore } from "../../src/store/useSyncStore";
-import * as FileSystem from "expo-file-system";
 
+// ─── Shared design tokens (Synced with the new Layout Pill) ───────────────────
+const tokens = {
+  green:       "#10b981",
+  greenDark:   "#2E4A3D", // Matched to the deep forest green of the tab bar
+  greenTint:   "rgba(16,185,129,0.10)",
+  ink:         "#0f172a",
+  muted:       "#64748b",
+  mutedLight:  "#94A3B8",
+  border:      "#E2E8F0",
+  surface:     "#FFFFFF",
+  bgCanvas:    "#F4F6F5", // Soft neutral for inner badges/buttons
+};
+
+// ─── Corner bracket reticle ───────────────────────────────────────────────────
+const CornerMark = ({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) => {
+  const W = 24, T = 3, C = "rgba(255,255,255,0.8)";
+  const isTop = pos === "tl" || pos === "tr", isLeft = pos === "tl" || pos === "bl";
+  return (
+    <View style={{ position: "absolute", width: W, height: W,
+      top: isTop ? 0 : undefined, bottom: isTop ? undefined : 0,
+      left: isLeft ? 0 : undefined, right: isLeft ? undefined : 0,
+    }}>
+      <View style={{ position: "absolute", width: W, height: T, backgroundColor: C, borderRadius: 2,
+        top: isTop ? 0 : undefined, bottom: isTop ? undefined : 0 }} />
+      <View style={{ position: "absolute", width: T, height: W, backgroundColor: C, borderRadius: 2,
+        left: isLeft ? 0 : undefined, right: isLeft ? undefined : 0 }} />
+    </View>
+  );
+};
+
+// ─── Floating Result Card (Replaces Bottom Sheet) ─────────────────────────────
+function ResultCard({ result, saveStatus, visible, onDismiss }: any) {
+  // Animate from completely off-screen (bottom: -400) to its natural position
+  const translateY = useRef(new Animated.Value(400)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(translateY, {
+        toValue: visible ? 0 : 400,
+        useNativeDriver: true,
+        damping: 22,
+        stiffness: 240,
+        mass: 0.8,
+      }),
+      Animated.spring(scale, {
+        toValue: visible ? 1 : 0.9,
+        useNativeDriver: true,
+        damping: 22,
+        stiffness: 240,
+      })
+    ]).start();
+  }, [visible]);
+
+  if (!result) return null;
+
+  const isHigh  = result.confidence >= 70;
+  const isMid   = result.confidence >= 40 && result.confidence < 70;
+  const tierColor  = isHigh ? tokens.green  : isMid ? "#f59e0b" : "#ef4444";
+  const tierBg     = isHigh ? tokens.greenTint : isMid ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)";
+  
+  const syncDot  = saveStatus?.includes("cloud") ? tokens.green : saveStatus?.includes("failed") ? "#f87171" : "#fbbf24";
+  const syncText = saveStatus?.includes("cloud") ? "Synced" : saveStatus?.includes("failed") ? "Queued locally" : saveStatus ? "Saved offline" : null;
+
+  return (
+    <Animated.View 
+      style={{ 
+        position: "absolute", 
+        // Positioned safely above the ~100px floating tab bar layout
+        bottom: Platform.OS === 'ios' ? 140 : 120, 
+        left: 20, 
+        right: 20, 
+        transform: [{ translateY }, { scale }],
+        // Layout pill shadow logic
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 20,
+        elevation: 12,
+      }}
+    >
+      <View 
+        style={{ 
+          backgroundColor: tokens.surface, 
+          borderRadius: 28, // Matches the high border radius of the pill
+          padding: 24,
+          overflow: "hidden" 
+        }}
+      >
+        {/* Top Header Row */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", color: tokens.mutedLight }}>
+            Identified Plant
+          </Text>
+          <TouchableOpacity 
+            onPress={onDismiss} 
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
+            style={{ 
+              width: 32, height: 32, borderRadius: 16, 
+              backgroundColor: tokens.bgCanvas, 
+              alignItems: "center", justifyContent: "center" 
+            }}
+          >
+            <Ionicons name="close" size={18} color={tokens.muted} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Plant Name */}
+        <Text 
+          style={{ fontSize: 32, fontWeight: "800", color: tokens.greenDark, letterSpacing: -0.8, textTransform: "capitalize", marginBottom: 20 }} 
+          numberOfLines={1} 
+          adjustsFontSizeToFit
+        >
+          {result.label}
+        </Text>
+
+        {/* Metadata Row */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: tierBg, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tierColor }} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: tierColor }}>
+              {result.confidence.toFixed(1)}% match
+            </Text>
+          </View>
+          
+          {syncText && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: syncDot }} />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: tokens.mutedLight }}>{syncText}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Subtle Progress Bar */}
+        <View style={{ height: 4, backgroundColor: tokens.bgCanvas, borderRadius: 99, overflow: "hidden" }}>
+          <View style={{ height: "100%", width: `${Math.min(result.confidence, 100)}%`, backgroundColor: tierColor, borderRadius: 99 }} />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Permission gate ──────────────────────────────────────────────────────────
+function PermissionGate({ onRequest }: { onRequest: () => void }) {
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: tokens.bgCanvas, paddingHorizontal: 32 }}>
+      <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: tokens.greenDark, alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+        <Ionicons name="camera" size={32} color={tokens.surface} />
+      </View>
+      <Text style={{ color: tokens.greenDark, fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 10, letterSpacing: -0.4 }}>Camera Access</Text>
+      <Text style={{ color: tokens.muted, fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 32 }}>We need access to your camera to identify plants in real time.</Text>
+      <TouchableOpacity 
+        onPress={onRequest} 
+        activeOpacity={0.8} 
+        style={{ 
+          backgroundColor: tokens.green, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 999, 
+          shadowColor: tokens.green, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 
+        }}
+      >
+        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.3 }}>Enable Camera</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ScanScreen() {
   const { hasPermission, requestPermission } = useCameraPermission();
-  const device = useCameraDevice("back");
-  const camera = useRef<Camera>(null);
+  const device  = useCameraDevice("back");
+  const camera  = useRef<Camera>(null);
   const { model, labels } = useTFLite();
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<{
-    label: string;
-    confidence: number;
-  } | null>(null);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const { captureTrigger, setIsProcessing } = useCameraStore();
 
-  // Access network status and sync queue
-  const isOnline = useNetworkStore((s) => s.isOnline);
+  const [result, setResult] = useState<{ label: string; confidence: number } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
+
+  const isOnline    = useNetworkStore((s) => s.isOnline);
   const enqueueScan = useSyncStore((s) => s.enqueueScan);
 
-  if (!hasPermission) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white p-4">
-        <Text className="text-center mb-4 text-gray-800">
-          We need camera access to scan plants.
-        </Text>
-        <TouchableOpacity
-          onPress={requestPermission}
-          className="bg-green-600 p-3 rounded-lg shadow-md"
-        >
-          <Text className="text-white font-bold">Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  useEffect(() => { if (result) setSheetVisible(true); }, [result]);
+
+  const handleDismiss = () => {
+    setSheetVisible(false);
+    setTimeout(() => setResult(null), 300); // Wait for exit animation
+  };
+
+  // ── Listen for Tab Bar captures ───────────────────────────────────────────
+  useEffect(() => {
+    if (captureTrigger > 0) {
+      handleCapture();
+    }
+  }, [captureTrigger]);
 
   const handleCapture = async () => {
     if (!camera.current || !model) return;
-
     try {
       setIsProcessing(true);
+      setSheetVisible(false);
       setResult(null);
 
-      // 1. Capture Photo
-      const photo = await camera.current.takePhoto({
-        flash: "off",
-      });
-
-      // 2. Resize AND convert to Base64
+      const photo = await camera.current.takePhoto({ flash: "off" });
       const manipulated = await ImageManipulator.manipulateAsync(
         `file://${photo.path}`,
         [{ resize: { width: 224, height: 224 } }],
         { format: ImageManipulator.SaveFormat.JPEG, base64: true },
       );
-
       if (!manipulated.base64) throw new Error("Image conversion failed");
 
-      // 3. Decode the Base64 string into raw RGB pixels using jpeg-js
-      const imgBuffer = Buffer.from(manipulated.base64, "base64");
+      const imgBuffer    = Buffer.from(manipulated.base64, "base64");
       const rawImageData = jpeg.decode(imgBuffer, { useTArray: true });
-
-      // 4. Translate pixels into the Float32 format the AI trained on (-1.0 to 1.0)
-      const floatData = new Float32Array(224 * 224 * 3);
-      let inputIndex = 0;
+      const floatData    = new Float32Array(224 * 224 * 3);
+      let idx = 0;
       for (let i = 0; i < rawImageData.data.length; i += 4) {
-        floatData[inputIndex++] = rawImageData.data[i] / 127.5 - 1.0; // R
-        floatData[inputIndex++] = rawImageData.data[i + 1] / 127.5 - 1.0; // G
-        floatData[inputIndex++] = rawImageData.data[i + 2] / 127.5 - 1.0; // B
+        floatData[idx++] = rawImageData.data[i]     / 127.5 - 1.0;
+        floatData[idx++] = rawImageData.data[i + 1] / 127.5 - 1.0;
+        floatData[idx++] = rawImageData.data[i + 2] / 127.5 - 1.0;
       }
 
-      // 5. Run Inference (Pass the translated Float32 array)
       const output = model.runSync([floatData]);
-
-      // 6. Process Results
       const probabilities = output[0] as Float32Array;
-
-      let maxConfidence = 0;
-      let maxIndex = 0;
-
-      // Find the highest score
+      let maxConf = 0, maxIdx = 0;
       for (let i = 0; i < probabilities.length; i++) {
-        if (probabilities[i] > maxConfidence) {
-          maxConfidence = probabilities[i];
-          maxIndex = i;
-        }
+        if (probabilities[i] > maxConf) { maxConf = probabilities[i]; maxIdx = i; }
       }
 
-      // 7. Update UI with the identified plant
-      const identifiedLabel = labels[maxIndex] || "Unknown";
-      const confidencePercent = maxConfidence * 100;
+      const identifiedLabel  = labels[maxIdx] || "Unknown";
+      const confidencePercent = maxConf * 100;
+      setResult({ label: identifiedLabel, confidence: confidencePercent });
 
-      setResult({
-        label: identifiedLabel,
-        confidence: confidencePercent,
-      });
-
-      // 8. Save the scan result based on connectivity
-      // Vision Camera saves photos to a temp cache dir that the OS can garbage-collect.
-      // We copy the photo to a permanent location so it survives until sync.
-      const tempUri = `file://${photo.path}`;
       const offlineDir = new FileSystem.Directory(FileSystem.Paths.document, "offline-scans");
-      if (!offlineDir.exists) {
-        offlineDir.create();
-      }
+      if (!offlineDir.exists) offlineDir.create();
       const permanentFile = new FileSystem.File(offlineDir, `scan_${Date.now()}.jpg`);
-      const tempFile = new FileSystem.File(tempUri);
-      tempFile.copy(permanentFile);
-
-      const originalImageUri = permanentFile.uri;
+      new FileSystem.File(`file://${photo.path}`).copy(permanentFile);
 
       if (isOnline) {
-        // ── ONLINE: Send directly to the server ──
         try {
-          // Build a multipart/form-data payload for our Express endpoint
           const formData = new FormData();
-
-          // Attach the original photo as a file
-          formData.append("images", {
-            uri: originalImageUri,
-            name: `scan_${Date.now()}.jpg`,
-            type: "image/jpeg",
-          } as any);
-
-          // Attach the scan metadata as a JSON string
-          const scanData = [
-            {
-              localId: `scan_${Date.now()}`,
-              plantName: identifiedLabel,
-              confidence: confidencePercent,
-              details: "",
-              scannedAt: new Date().toISOString(),
-            },
-          ];
-          formData.append("scans", JSON.stringify(scanData));
-
-          await apiClient.post("/api/scans/sync", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-          // Upload succeeded — delete the local copy since it's now in the cloud
-          try {
-            if (permanentFile.exists) permanentFile.delete();
-          } catch {
-            // Non-critical — don't block the success flow
-          }
-
-          setSaveStatus("✅ Scan saved to cloud!");
-        } catch (uploadError) {
-          // If the server upload fails, fall back to offline queue
-          console.warn(
-            "Online upload failed, saving to offline queue:",
-            uploadError,
-          );
-          enqueueScan(originalImageUri, identifiedLabel, confidencePercent);
-          setSaveStatus("⚠️ Upload failed — saved offline");
+          formData.append("images", { uri: permanentFile.uri, name: `scan_${Date.now()}.jpg`, type: "image/jpeg" } as any);
+          formData.append("scans", JSON.stringify([{
+            localId: `scan_${Date.now()}`, plantName: identifiedLabel,
+            confidence: confidencePercent, details: "", scannedAt: new Date().toISOString(),
+          }]));
+          await apiClient.post("/api/scans/sync", formData, { headers: { "Content-Type": "multipart/form-data" } });
+          try { if (permanentFile.exists) permanentFile.delete(); } catch {}
+          setSaveStatus("Saved to cloud");
+        } catch {
+          enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
+          setSaveStatus("Upload failed — saved offline");
         }
       } else {
-        // ── OFFLINE: Save to local queue for later sync ──
-        enqueueScan(originalImageUri, identifiedLabel, confidencePercent);
-        setSaveStatus("📱 Saved offline — will sync later");
+        enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
+        setSaveStatus("Saved offline — will sync later");
       }
 
-      // Auto-clear the status message after 3 seconds
-      setTimeout(() => setSaveStatus(null), 3000);
-    } catch (error) {
-      console.error("Inference Error:", error);
+      setTimeout(() => setSaveStatus(null), 3500);
+    } catch (err) {
+      console.error("Inference Error:", err);
       Alert.alert("Error", "Failed to analyze plant. Please try again.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (!device) {
-    return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <ActivityIndicator size="large" color="#4ADE80" />
-      </View>
-    );
-  }
+  if (!hasPermission) return <PermissionGate onRequest={requestPermission} />;
+  if (!device) return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000" }}>
+      <ActivityIndicator size="large" color={tokens.green} />
+    </View>
+  );
 
   return (
-    <View className="flex-1 bg-black">
-      {/* Camera Preview */}
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      {/* Camera feed */}
       <Camera
         ref={camera}
         style={{ flex: 1 }}
@@ -212,60 +297,43 @@ export default function ScanScreen() {
         photo={true}
       />
 
-      {/* Target Reticle (Helps user aim) */}
-      <View className="absolute inset-0 items-center justify-center pointer-events-none">
-        <View className="w-64 h-64 border-2 border-green-400 rounded-2xl bg-transparent opacity-60" />
-      </View>
-
-      {/* UI Overlay */}
-      <View className="absolute bottom-10 left-0 right-0 items-center">
-        {result && (
-          <View className="bg-white p-4 rounded-2xl mb-6 w-4/5 shadow-lg items-center">
-            <Text className="text-green-800 text-xs font-bold uppercase tracking-widest mb-1">
-              Result Found
-            </Text>
-            <Text className="text-3xl font-extrabold text-gray-900 capitalize">
-              {result.label}
-            </Text>
-            <View
-              className={`mt-2 px-3 py-1 rounded-full ${result.confidence > 50 ? "bg-green-100" : "bg-red-100"}`}
-            >
-              <Text
-                className={`font-bold ${result.confidence > 50 ? "text-green-700" : "text-red-700"}`}
-              >
-                Confidence: {result.confidence.toFixed(1)}%
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Save Status Banner */}
-        {saveStatus && (
-          <View className="bg-black/70 px-4 py-2 rounded-full mb-4">
-            <Text className="text-white font-semibold text-center">
-              {saveStatus}
-            </Text>
-          </View>
-        )}
-
-        <TouchableOpacity
-          onPress={handleCapture}
-          disabled={isProcessing}
-          className={`w-20 h-20 rounded-full border-4 border-white items-center justify-center shadow-lg active:scale-95 ${
-            isProcessing ? "bg-gray-500" : "bg-green-600"
-          }`}
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="white" size="large" />
-          ) : (
-            <View className="w-16 h-16 rounded-full border-2 border-white/50" />
-          )}
-        </TouchableOpacity>
-
-        <Text className="text-white mt-4 font-medium tracking-wide shadow-black drop-shadow-md bg-black/40 px-4 py-1 rounded-full">
-          {isProcessing ? "Analyzing Leaf..." : "Tap to Scan Leaf"}
+      {/* ── Network badge ───────────────────────────────────────────────────── */}
+      <View
+        style={{
+          position: "absolute", top: Platform.OS === 'ios' ? 60 : 40, right: 20,
+          flexDirection: "row", alignItems: "center",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          paddingHorizontal: 12, paddingVertical: 6,
+          borderRadius: 999, gap: 8,
+        }}
+        pointerEvents="none"
+      >
+        <View style={{
+          width: 6, height: 6, borderRadius: 3,
+          backgroundColor: isOnline ? tokens.green : tokens.mutedLight,
+        }} />
+        <Text style={{ color: tokens.surface, fontSize: 12, fontWeight: "600", letterSpacing: 0.3 }}>
+          {isOnline ? "Online" : "Offline"}
         </Text>
       </View>
+
+      {/* ── Reticle ─────────────────────────────────────────────────────────── */}
+      <View
+        style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center", top: -80 }} // Offset slightly to account for the card
+        pointerEvents="none"
+      >
+        <View style={{ width: 220, height: 220, position: "relative" }}>
+          {(["tl","tr","bl","br"] as const).map((p) => <CornerMark key={p} pos={p} />)}
+        </View>
+      </View>
+
+      {/* ── Result Floating Card ───────────────────────────────────────────── */}
+      <ResultCard
+        result={result}
+        saveStatus={saveStatus}
+        visible={sheetVisible}
+        onDismiss={handleDismiss}
+      />
     </View>
   );
 }
