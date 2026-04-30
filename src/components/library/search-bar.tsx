@@ -11,14 +11,17 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { searchPlantsLocally } from "../../services/firebaseLibrary";
 import {
   selectSearchQuery,
   useLibraryStore,
 } from "../../store/useLibraryStore";
+import { useNetworkStore } from "../../store/useNetworkStore";
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -58,6 +61,30 @@ export function SearchBar({
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
+
+  // Suggestions: derive from the library's plant list (or favorites when offline)
+  const plants = useLibraryStore((s) => s.plants);
+  const favorites = useLibraryStore((s) => s.favorites);
+  const isOnline = useNetworkStore((s) => s.isOnline);
+
+  const sourceList = isOnline
+    ? plants
+    : (favorites || []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        scientificName: f.scientificName,
+        imageUrl: f.imageUrl,
+        categories: f.categories,
+      }));
+
+  const suggestions = React.useMemo(() => {
+    if (!localValue || localValue.trim().length === 0) return [];
+    try {
+      return searchPlantsLocally(sourceList, localValue).slice(0, 6);
+    } catch (e) {
+      return [];
+    }
+  }, [localValue, sourceList]);
 
   // Keep local value in sync when the store is reset externally
   // (e.g. user taps a filter pill that also clears the search)
@@ -181,6 +208,45 @@ export function SearchBar({
           </TouchableOpacity>
         ) : null}
       </View>
+
+      {/* Suggestions dropdown */}
+      {hasValue && suggestions.length > 0 && (
+        <View className="mt-2 bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          {suggestions.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              activeOpacity={0.7}
+              onPress={() => {
+                // Immediately set localValue and commit to store
+                setLocalValue(s.name);
+                // Cancel debounce and commit immediately
+                if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                setIsBusy(true);
+                try {
+                  setSearchQuery(s.name);
+                  onSearch?.(s.name);
+                } finally {
+                  setIsBusy(false);
+                }
+                // Keep focus on the input for further typing
+                inputRef.current?.focus();
+              }}
+              className="px-4 py-3 border-b border-gray-100"
+            >
+              <View className="flex-row items-center justify-between">
+                <View>
+                  <Text className="text-gray-800 font-medium">{s.name}</Text>
+                  {s.scientificName ? (
+                    <Text className="text-gray-400 text-xs">
+                      {s.scientificName}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }

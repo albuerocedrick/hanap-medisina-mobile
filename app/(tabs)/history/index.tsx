@@ -4,7 +4,7 @@
  */
 
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -14,7 +14,7 @@ import {
   RefreshControl,
   StatusBar,
   Text,
-  View
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -22,7 +22,7 @@ import {
   getPaginatedUserScans,
   getTotalScansCount,
   parseDateToMs,
-  ScanHistoryItem
+  ScanHistoryItem,
 } from "@/src/services/firebaseHistory";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useNetworkStore } from "@/src/store/useNetworkStore"; // <-- IMPORT YOUR GLOBAL STORE
@@ -30,92 +30,110 @@ import { useSyncStore } from "@/src/store/useSyncStore";
 
 import { HistoryCard } from "@/src/components/history/history-card";
 import { HistoryEmptyState } from "@/src/components/history/history-empty-state";
-import { HistoryHeader, SortFilter, StatusFilter } from "@/src/components/history/history-header";
+import {
+  HistoryHeader,
+  SortFilter,
+  StatusFilter,
+} from "@/src/components/history/history-header";
 import { ScanDetailSheet } from "@/src/components/history/scan-detail-sheet";
 
 const PAGE_SIZE = 10;
 
 export default function HistoryScreen() {
   const router = useRouter();
+  // Read incoming params (e.g. from Home navigation) to auto-open a scan
+  const params = useLocalSearchParams();
+  const incomingScanId = params?.scanId as string | undefined;
+  const incomingOpenAt = params?.openAt as string | undefined;
   const { user } = useAuthStore();
   const { syncQueue } = useSyncStore();
-  const insets = useSafeAreaInsets(); 
-  
+  const insets = useSafeAreaInsets();
+
   // <-- USE YOUR GLOBAL NETWORK STORE HERE -->
   // Change `isOnline` to whatever property name you use in useNetworkStore (e.g., isConnected)
-  const isOnline = useNetworkStore((state: any) => state.isOnline); 
-  const isOffline = !isOnline; 
+  const isOnline = useNetworkStore((state: any) => state.isOnline);
+  const isOffline = !isOnline;
 
   // Data State
   const [cloudItems, setCloudItems] = useState<ScanHistoryItem[]>([]);
-  const [cloudTotalCount, setCloudTotalCount] = useState<number>(0); 
+  const [cloudTotalCount, setCloudTotalCount] = useState<number>(0);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
-  
+
   // Pagination State
-  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [lastDoc, setLastDoc] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  
+
   // Loading & Error State
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortFilter, setSortFilter] = useState<SortFilter>("newest");
 
   // ── Fetch Initial Page ────────────────────────────────────────────────────────
-  const fetchInitialScans = useCallback(async (isRefresh = false) => {
-    if (!user?.uid) {
-      setCloudItems([]);
-      setCloudTotalCount(0);
-      setLoadingInitial(false);
-      return;
-    }
+  const fetchInitialScans = useCallback(
+    async (isRefresh = false) => {
+      if (!user?.uid) {
+        setCloudItems([]);
+        setCloudTotalCount(0);
+        setLoadingInitial(false);
+        return;
+      }
 
-    // Skip Firebase fetching if we are offline
-    if (isOffline) {
-      setLoadingInitial(false);
-      setRefreshing(false);
-      return;
-    }
-    
-    if (isRefresh) setRefreshing(true);
-    else setLoadingInitial(true);
-    
-    setError(null);
-    try {
-      const order = sortFilter === "newest" ? "desc" : "asc";
-      
-      const [result, totalCountFromDb] = await Promise.all([
-        getPaginatedUserScans(user.uid, order, null, PAGE_SIZE),
-        getTotalScansCount(user.uid)
-      ]);
-      
-      setCloudItems(result.items);
-      setCloudTotalCount(totalCountFromDb); 
-      setLastDoc(result.lastDoc);
-      setHasMore(result.hasMore);
-    } catch (err: any) {
-      console.error("[HistoryScreen] Initial fetch error:", err);
-      setError(err.message || "Could not load cloud history.");
-    } finally {
-      setLoadingInitial(false);
-      setRefreshing(false);
-    }
-  }, [user?.uid, sortFilter, isOffline]);
+      // Skip Firebase fetching if we are offline
+      if (isOffline) {
+        setLoadingInitial(false);
+        setRefreshing(false);
+        return;
+      }
+
+      if (isRefresh) setRefreshing(true);
+      else setLoadingInitial(true);
+
+      setError(null);
+      try {
+        const order = sortFilter === "newest" ? "desc" : "asc";
+
+        const [result, totalCountFromDb] = await Promise.all([
+          getPaginatedUserScans(user.uid, order, null, PAGE_SIZE),
+          getTotalScansCount(user.uid),
+        ]);
+
+        setCloudItems(result.items);
+        setCloudTotalCount(totalCountFromDb);
+        setLastDoc(result.lastDoc);
+        setHasMore(result.hasMore);
+      } catch (err: any) {
+        console.error("[HistoryScreen] Initial fetch error:", err);
+        setError(err.message || "Could not load cloud history.");
+      } finally {
+        setLoadingInitial(false);
+        setRefreshing(false);
+      }
+    },
+    [user?.uid, sortFilter, isOffline],
+  );
 
   // ── Fetch Next Page (Infinite Scroll) ───────────────────────────────────────
   const fetchNextPage = useCallback(async () => {
-    if (!user?.uid || !hasMore || isFetchingMore || loadingInitial || isOffline) return;
+    if (!user?.uid || !hasMore || isFetchingMore || loadingInitial || isOffline)
+      return;
 
     setIsFetchingMore(true);
     try {
       const order = sortFilter === "newest" ? "desc" : "asc";
-      const result = await getPaginatedUserScans(user.uid, order, lastDoc, PAGE_SIZE);
-      
-      setCloudItems(prev => [...prev, ...result.items]);
+      const result = await getPaginatedUserScans(
+        user.uid,
+        order,
+        lastDoc,
+        PAGE_SIZE,
+      );
+
+      setCloudItems((prev) => [...prev, ...result.items]);
       setLastDoc(result.lastDoc);
       setHasMore(result.hasMore);
     } catch (err) {
@@ -123,7 +141,15 @@ export default function HistoryScreen() {
     } finally {
       setIsFetchingMore(false);
     }
-  }, [user?.uid, hasMore, isFetchingMore, loadingInitial, lastDoc, sortFilter, isOffline]);
+  }, [
+    user?.uid,
+    hasMore,
+    isFetchingMore,
+    loadingInitial,
+    lastDoc,
+    sortFilter,
+    isOffline,
+  ]);
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
@@ -132,24 +158,34 @@ export default function HistoryScreen() {
     return () => task.cancel();
   }, [fetchInitialScans]);
 
+  // Open modal automatically if a scanId was passed in route params
+  useEffect(() => {
+    // Depend on both scanId and openAt nonce so repeated navigations open modal
+    if (incomingScanId) {
+      setSelectedScanId(incomingScanId);
+    }
+  }, [incomingScanId, incomingOpenAt]);
+
   // ── Build & Merge Data ──────────────────────────────────────────────────────
   const mergedData = useMemo(() => {
-    const localItems: ScanHistoryItem[] = (syncQueue ?? []).map((scan: any) => ({
-      id: scan.localId, 
-      plantName: scan.plantName ?? "Unknown Plant",
-      confidence: scan.confidence ?? 0,
-      imageUri: scan.imageUri ?? "", 
-      createdAt: parseDateToMs(scan.scannedAt) || Date.now(), 
-      status: "pending",
-    }));
+    const localItems: ScanHistoryItem[] = (syncQueue ?? []).map(
+      (scan: any) => ({
+        id: scan.localId,
+        plantName: scan.plantName ?? "Unknown Plant",
+        confidence: scan.confidence ?? 0,
+        imageUri: scan.imageUri ?? "",
+        createdAt: parseDateToMs(scan.scannedAt) || Date.now(),
+        status: "pending",
+      }),
+    );
 
     const cloudIds = new Set(cloudItems.map((c) => c.id));
     const dedupedLocal = localItems.filter((l) => !cloudIds.has(l.id));
     const combined = [...dedupedLocal, ...cloudItems];
 
     return combined.sort((a, b) => {
-      return sortFilter === "newest" 
-        ? b.createdAt - a.createdAt 
+      return sortFilter === "newest"
+        ? b.createdAt - a.createdAt
         : a.createdAt - b.createdAt;
     });
   }, [cloudItems, syncQueue, sortFilter]);
@@ -157,19 +193,23 @@ export default function HistoryScreen() {
   const displayData = useMemo(() => {
     // If offline, force ONLY pending local items to show
     if (isOffline) {
-      return mergedData.filter(item => item.status === "pending");
+      return mergedData.filter((item) => item.status === "pending");
     }
-    return mergedData.filter(item => statusFilter === "all" ? true : item.status === statusFilter);
+    return mergedData.filter((item) =>
+      statusFilter === "all" ? true : item.status === statusFilter,
+    );
   }, [mergedData, statusFilter, isOffline]);
 
-  const pendingCount = mergedData.filter(item => item.status === "pending").length;
-  
-  // If offline, the "total" is just the pending local items. 
+  const pendingCount = mergedData.filter(
+    (item) => item.status === "pending",
+  ).length;
+
+  // If offline, the "total" is just the pending local items.
   const totalCount = isOffline ? pendingCount : cloudTotalCount + pendingCount;
 
   // ── Card Press Handler ──────────────────────────────────────────────────────
   const handleCardPress = useCallback((item: ScanHistoryItem) => {
-    setSelectedScanId(item.id); 
+    setSelectedScanId(item.id);
   }, []);
 
   // ── Layout Calculations ─────────────────────────────────────────────────────
@@ -178,7 +218,11 @@ export default function HistoryScreen() {
 
   return (
     <View className="flex-1 bg-[#f8fafc]" style={{ paddingTop: insets.top }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" translucent />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#f8fafc"
+        translucent
+      />
 
       <View className="bg-[#f8fafc] z-10">
         <HistoryHeader
@@ -187,7 +231,9 @@ export default function HistoryScreen() {
           statusFilter={isOffline ? "pending" : statusFilter} // Force pending visual if offline
           sortFilter={sortFilter}
           onStatusChange={setStatusFilter}
-          onSortChange={() => setSortFilter(prev => prev === "newest" ? "oldest" : "newest")}
+          onSortChange={() =>
+            setSortFilter((prev) => (prev === "newest" ? "oldest" : "newest"))
+          }
           isOffline={isOffline} // Pass to Header to hide synced pills
         />
       </View>
@@ -205,25 +251,30 @@ export default function HistoryScreen() {
       {loadingInitial ? (
         <View className="flex-1 items-center justify-center pb-20">
           <ActivityIndicator size="large" color="#16a34a" />
-          <Text className="mt-4 text-sm font-medium text-slate-500">Loading history…</Text>
+          <Text className="mt-4 text-sm font-medium text-slate-500">
+            Loading history…
+          </Text>
         </View>
       ) : (
         <FlatList
           data={displayData}
           keyExtractor={(item) => `${item.status}-${item.id}`}
-          renderItem={({ item }) => <HistoryCard item={item} onPress={handleCardPress} />}
-          
+          renderItem={({ item }) => (
+            <HistoryCard item={item} onPress={handleCardPress} />
+          )}
           onEndReached={fetchNextPage}
           onEndReachedThreshold={0.5}
-          
-          ListEmptyComponent={<HistoryEmptyState filter={isOffline ? "pending" : statusFilter} />}
-          
+          ListEmptyComponent={
+            <HistoryEmptyState filter={isOffline ? "pending" : statusFilter} />
+          }
           ListFooterComponent={
             <View className="w-full pb-6">
               {error && !isOffline && (
                 <View className="mx-4 my-2 p-3 bg-red-50 rounded-xl border border-red-200 flex-row gap-3 items-center">
                   <Feather name="alert-circle" size={18} color="#ef4444" />
-                  <Text className="flex-1 text-xs font-medium text-red-800">{error}</Text>
+                  <Text className="flex-1 text-xs font-medium text-red-800">
+                    {error}
+                  </Text>
                 </View>
               )}
               {isFetchingMore && !isOffline && (
@@ -233,7 +284,6 @@ export default function HistoryScreen() {
               )}
             </View>
           }
-          
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -243,19 +293,20 @@ export default function HistoryScreen() {
               enabled={!isOffline} // Disable pull-to-refresh if offline
             />
           }
-          
           contentContainerStyle={[
-            displayData.length === 0 && { flex: 1 }, 
-            { paddingBottom: bottomPadding, paddingTop: 8 }
+            displayData.length === 0 && { flex: 1 },
+            { paddingBottom: bottomPadding, paddingTop: 8 },
           ]}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      <ScanDetailSheet 
+      <ScanDetailSheet
         visible={!!selectedScanId}
         scanId={selectedScanId}
-        onClose={() => setSelectedScanId(null)}
+        onClose={() => {
+          setSelectedScanId(null);
+        }}
       />
     </View>
   );

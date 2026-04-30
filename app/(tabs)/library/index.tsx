@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect } from "react";
+import { useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   Text,
   TouchableOpacity,
@@ -11,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Components
+import { ScanDetailSheet } from "../../../src/components/history/scan-detail-sheet";
 import { FilterPills } from "../../../src/components/library/filter-pills";
 import { PlantCard } from "../../../src/components/library/plant-card";
 import { SearchBar } from "../../../src/components/library/search-bar";
@@ -23,10 +26,21 @@ import {
 } from "../../../src/store/useNetworkStore";
 
 export default function LibraryFeed() {
+  // ─── Route Params ────────────────────────────────────────────────────────
+  const params = useLocalSearchParams();
+  const scanIdFromParams = params?.scanId as string | undefined;
+  const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
+
+  // Auto-open modal if scanId is passed from home screen
+  useEffect(() => {
+    if (scanIdFromParams) {
+      setSelectedScanId(scanIdFromParams);
+    }
+  }, [scanIdFromParams]);
+
   // ─── Global State Subscriptions ──────────────────────────────────────────
   const isOnline = useNetworkStore(selectIsOnline);
 
-  // Subscribe to dependencies that should trigger a re-render when they change
   const plants = useLibraryStore((s) => s.plants);
   const favorites = useLibraryStore((s) => s.favorites);
   const searchQuery = useLibraryStore((s) => s.searchQuery);
@@ -43,21 +57,17 @@ export default function LibraryFeed() {
   const clearErrors = useLibraryStore((s) => s.clearErrors);
   const getDisplayedPlants = useLibraryStore((s) => s.getDisplayedPlants);
 
-  // ─── Derived Data ────────────────────────────────────────────────────────
-  // We subscribe to the source arrays above to ensure React re-renders,
-  // then we call the store's single-source-of-truth derived selector.
   const displayedPlants = getDisplayedPlants();
 
   // ─── Lifecycles & Handlers ───────────────────────────────────────────────
   useEffect(() => {
-    // Only fetch automatically on mount if online and the list is empty
     if (isOnline && plants.length === 0) {
       fetchPlantsByActiveCategory();
     }
   }, [isOnline]);
 
   const handleRefresh = useCallback(() => {
-    if (!isOnline) return; // Cannot refresh from Firebase while offline
+    if (!isOnline) return;
     clearErrors();
     fetchPlantsByActiveCategory();
   }, [isOnline, fetchPlantsByActiveCategory, clearErrors]);
@@ -70,7 +80,6 @@ export default function LibraryFeed() {
   // ─── Render Sub-components ───────────────────────────────────────────────
 
   const renderEmptyState = () => {
-    // 1. Loading State
     if (isLoadingPlants && displayedPlants.length === 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
@@ -82,7 +91,6 @@ export default function LibraryFeed() {
       );
     }
 
-    // 2. Error State (Online)
     if (plantsError) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
@@ -105,7 +113,6 @@ export default function LibraryFeed() {
       );
     }
 
-    // 3. Offline & No Favorites Saved
     if (!isOnline && favorites.length === 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
@@ -123,7 +130,6 @@ export default function LibraryFeed() {
       );
     }
 
-    // 4. Search No Results
     if (searchQuery.length > 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
@@ -141,7 +147,6 @@ export default function LibraryFeed() {
       );
     }
 
-    // 5. Category No Results
     if (activeCategory) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
@@ -164,11 +169,9 @@ export default function LibraryFeed() {
 
   const renderHeader = () => (
     <View className="pb-2">
-      {/* Search & Filter Layer */}
       <SearchBar />
       <FilterPills />
 
-      {/* Offline Mode Banner */}
       {!isOnline && (
         <View className="mx-4 mt-2 mb-1 bg-amber-50 border border-amber-200 rounded-lg flex-row items-center p-3">
           <Ionicons name="warning-outline" size={20} color="#d97706" />
@@ -179,7 +182,6 @@ export default function LibraryFeed() {
         </View>
       )}
 
-      {/* Result Count (Optional but nice UX) */}
       {displayedPlants.length > 0 && (
         <View className="mx-4 mt-2 mb-1 flex-row items-center justify-between">
           <Text className="text-gray-500 text-xs font-medium uppercase tracking-wider">
@@ -194,9 +196,21 @@ export default function LibraryFeed() {
   // ─── Main Render ─────────────────────────────────────────────────────────
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50">
-      {/* Navigation Header */}
+      {/* Updated Navigation Header with Avatar Button UI */}
       <View className="px-6 py-4 bg-gray-50 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-gray-900">Library</Text>
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            activeOpacity={0.7}
+            className="mr-3 bg-white overflow-hidden"
+          >
+            <Image
+              source={require("../../../assets/images/library-mariherb.png")}
+              style={{ width: 150, height: 150 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900">Library</Text>
+        </View>
         <Ionicons name="library-outline" size={24} color="#16a34a" />
       </View>
 
@@ -208,7 +222,6 @@ export default function LibraryFeed() {
         ListEmptyComponent={renderEmptyState}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
-        // Pull to refresh is only functional when online
         refreshControl={
           <RefreshControl
             refreshing={isLoadingPlants && displayedPlants.length > 0}
@@ -218,6 +231,13 @@ export default function LibraryFeed() {
             enabled={isOnline}
           />
         }
+      />
+
+      {/* ── Scan Detail Modal ── */}
+      <ScanDetailSheet
+        visible={selectedScanId !== null}
+        scanId={selectedScanId}
+        onClose={() => setSelectedScanId(null)}
       />
     </SafeAreaView>
   );

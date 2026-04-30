@@ -1,0 +1,51 @@
+Phase 6: Interactive Home Tab & Offline-First Feed (Direct Firebase)
+Goal: Create a dynamic, highly engaging Home Screen that acts as the launchpad for HanapMedisina, leveraging Direct Firebase queries while maintaining a strict zero-latency, offline-first experience.
+
+1. User Interface Breakdown (Top-to-Bottom)
+The Home Tab (app/(tabs)/index.tsx) will consist of:
+
+Top Header: Greeting ("Good morning, [Name]") and a Network/Sync Status indicator.
+Global Search Bar: For text-based plant searches.
+Ailment Categories: Quick filter chips (e.g., "Cough", "Fever", "Wound Care").
+Plant of the Day (Hero Card): Large visual card highlighting a specific plant.
+"Scan Now" Call-To-Action: Prominent banner navigating to the Camera Tab.
+Recent Scans (Library Preview): Horizontal carousel of the user's latest local scans.
+Daily Trivia Snippet: A small educational card at the bottom.
+2. Firebase Data Architecture (The "Single Document" Pattern)
+Because you are reading directly from Firebase, making 4 separate queries (for categories, trivia, featured plants, etc.) every time the app opens will drain the user's data and increase your Firebase read costs.
+
+Instead, you will use the NoSQL "Aggregation Document" pattern:
+
+The Strategy: You will create ONE single document in Firestore, for example: system_config/home_feed.
+The Content: This single document contains the exact JSON payload of everything needed for the home screen (the current Plant of the Day, the Categories, the Featured Plants list, and a batch of Trivia).
+The Action: The mobile app only executes one single direct Firebase read to get everything.
+Example Firebase Document (system_config/home_feed):
+
+json
+{
+  "plantOfTheDay": { "id": "p_001", "name": "Lagundi", "heroImageUrl": "..." },
+  "categories": [ { "id": "cat_01", "name": "Cough & Colds" } ],
+  "featuredPlants": [ { "id": "p_005", "name": "Sambong", "thumbnailUrl": "..." } ],
+  "weeklyTrivia": [ { "id": "triv_1", "text": "Did you know..." } ] 
+}
+3. Offline-First Mobile Strategy (Firebase + Zustand)
+Even though Firebase has built-in offline persistence, using a Zustand store provides the absolute best "zero-latency" feel.
+
+A. The Fetch & Cache Flow (useFeedStore.ts)
+
+App Launch: The Home Screen renders immediately using data already saved in useFeedStore.
+Background Firebase Read: The app directly calls firestore().collection('system_config').doc('home_feed').get().
+Silent Update: Upon a successful read, it updates the useFeedStore. The UI refreshes seamlessly, and the new data is saved locally.
+B. Image Caching Images are not stored in Firebase. They are hosted on Cloudinary/Firebase Storage. The mobile app uses expo-image to download the photo once and save it to the phone's physical storage for instant offline loading.
+
+C. The "Lightweight Dictionary" vs. "Library"
+
+Lightweight Dictionary: A small list containing only id, name, category, and thumbnailUrl for all plants. Also fetched directly from Firebase and cached locally. It powers the Search Bar and Category filters offline.
+Library (Favorites): Contains the heavy, full Markdown descriptions. Downloaded from Firebase only when a user explicitly taps "Favorite" on a plant.
+D. UI Graceful Degradation (The Plant Details Screen) The app uses a single PlantDetailsScreen that adapts its UI based on the cache state:
+
+Online: Direct Firebase query for the specific plant's full document.
+Offline + In Library: Loads full plant data from the local Zustand cache. Displays normally.
+Offline + NOT In Library: Loads Name and Thumbnail from the Lightweight Dictionary cache. Hides the preparation instructions and displays an alert banner: "Basic Info Only. Connect to Wi-Fi to view full medicinal preparation methods."
+4. Maintenance / Admin Tasks
+To update the Home Screen content (like changing the "Plant of the Day"), you do NOT need to update the app code. You simply edit the system_config/home_feed document directly in your Firebase Console. The next time users open the app online, their home screen will automatically update to reflect your changes!

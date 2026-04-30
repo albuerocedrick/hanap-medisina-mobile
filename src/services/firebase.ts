@@ -2,7 +2,11 @@ import { initializeApp } from "firebase/app";
 // @ts-ignore - The function exists in the RN bundle, but TS definitions are missing it
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getAuth, initializeAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  connectFirestoreEmulator,
+  getFirestore,
+  setLogLevel,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_API_KEY,
@@ -18,6 +22,25 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
+
+// Reduce noisy connectivity logs in development when the device is offline.
+// Options: 'debug' | 'error' | 'silent'
+setLogLevel("error");
+
+// Optional: connect to local Firestore emulator when env var is set.
+if (process.env.USE_FIRESTORE_EMULATOR === "1") {
+  try {
+    // Default emulator host/port assumed; change if you run emulator on a different port.
+    connectFirestoreEmulator(db, "localhost", 8080);
+    // eslint-disable-next-line no-console
+    console.info(
+      "[firebase] Connected to Firestore emulator at localhost:8080",
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[firebase] Failed to connect to Firestore emulator:", e);
+  }
+}
 
 // 2. Initialize Firebase Auth specifically for React Native
 // This ensures that when a user closes HanapDamo and opens it tomorrow,
