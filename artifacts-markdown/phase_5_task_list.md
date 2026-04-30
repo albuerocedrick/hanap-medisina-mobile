@@ -27,49 +27,58 @@ This list breaks down the implementation of Phase 5 (History, Profile & Media Po
 ## 📱 Phase 5.2: Frontend History Features (`hanap-medisina-mobile`)
 
 ### 4. `app/(tabs)/history/index.tsx` (Unified Scan History)
-*(Note: Requires renaming `app/(tabs)/history.tsx` to `app/(tabs)/history/index.tsx`)*
-- [x] **Folder Structure:** Create `app/(tabs)/history/` directory and move the history file inside as `index.tsx`.
-- [x] **Import Hooks:** Import `useSyncStore` (Zustand) and Firebase Firestore hooks.
-- [x] **Fetch Cloud Data:** Use `query`, `collection`, `where('userId', '==', uid)`, and `orderBy('createdAt', 'desc')` to get synced scans.
+- [x] **Architecture Upgrade:** Implement pagination and infinite scrolling via `src/services/firebaseHistory.ts` to prevent memory/billing issues.
+- [x] **Fetch Cloud Data:** Use `getPaginatedUserScans` to fetch data in chunks of 10 and `getTotalScansCount` for efficient counting.
 - [x] **Retrieve Local Data:** Get the `syncQueue` from `useSyncStore`.
-- [x] **Merge Logic:** Create a unified `historyData` array by merging cloud and local data.
-- [x] **Sort:** Ensure the final list is sorted by timestamp descending.
+- [x] **Merge Logic:** Create a unified `displayData` array by merging cloud and local data, sorting by timestamp.
 - [x] **UI Implementation:** 
-    - [x] Render a `FlatList`.
-    - [x] Add a "Pending Sync" visual badge for items originating from the `syncQueue`.
+    - [x] Render a `FlatList` with `onEndReached` for infinite scrolling.
+    - [x] Extract UI into reusable components: `HistoryCard`, `HistoryHeader`, and `HistoryEmptyState`.
 
-### 5. `app/(tabs)/history/[id].tsx` (Scan Details Page)
-- [x] **Route Setup:** Use `useLocalSearchParams` to get the `id`.
+### 5. `src/components/history/scan-detail-sheet.tsx` (Scan Details Modal)
+*(Note: This replaces the previous `app/(tabs)/history/[id].tsx` route)*
+- [x] **Route Setup:** Implement as a Bottom Sheet Modal instead of a separate screen for better UX.
 - [x] **Data Fetching Logic:**
-    - [x] Check if `id` exists in `useSyncStore.syncQueue`.
-    - [x] If not, fetch document from Firestore `scans` collection.
+    - [x] Check if `scanId` exists in `useSyncStore.syncQueue`.
+    - [x] If not, fetch document via `getScanById`.
 - [x] **UI Layout:**
-    - [x] Display plant image (Cloudinary URL or local `file://` URI).
-    - [x] Show scientific name, common name, and identification confidence.
-    - [x] Render care facts/medical info.
+    - [x] Display side-by-side images (User Scan vs Library Reference).
+    - [x] Show confidence bar, sync status, and capture date.
+    - [x] Add "View Full Plant Info" button to route to the Library page.
+- [x] **Manual Retry Feature:**
+    - [x] Implement "Retry Sync" button specifically for items with `retryCount >= 3`.
+    - [x] Reset `retryCount` and trigger `runSync()` from the bottom sheet.
+    - [x] Handle loading and offline states for the retry button.
 
 ---
 
 ## 📱 Phase 5.3: Frontend Profile Polish (`hanap-medisina-mobile`)
 
-### 6. `app/(tabs)/profile.tsx` (User Profile & Avatar)
-- [ ] **Dependency Setup:** Ensure `expo-image-picker` is installed and configured.
-- [ ] **Stats Query:** Fetch the count of documents in `scans` for the current user.
-- [ ] **Avatar Logic:**
-    - [ ] Implement `pickImage` using `ImagePicker.launchImageLibraryAsync`.
-    - [ ] Implement `uploadAvatar` function:
-        - [ ] Create `FormData`.
-        - [ ] Send `POST /api/users/avatar` via Axios `client.ts`.
-        - [ ] On success, call `auth.currentUser.reload()`.
-- [ ] **UI Polish:** 
-    - [ ] Add an "Edit" button over the avatar.
-    - [ ] Show loading state while uploading to prevent duplicate submissions.
-    - [ ] Display user stats (Total Scans, Saved Plants).
+### 6. `app/(tabs)/profile.tsx` + `src/components/profile/` (User Profile & Avatar)
+- [x] **Dependency Setup:** `expo-image-picker` integrated for media selection.
+- [x] **Component Extraction:**
+    - [x] `profile-avatar.tsx` — avatar with edit-button overlay and upload state.
+    - [x] `profile-stats.tsx` — Total Scans & Member Since stat pills.
+    - [x] `profile-menu-item.tsx` — reusable row for settings/actions.
+- [x] **Data Fetching:**
+    - [x] Fetch the count of documents in `scans` via `getTotalScansCount`.
+    - [x] Derive "Member since [Month] [Year]" from `user.metadata.creationTime`.
+- [x] **Avatar Logic:**
+    - [x] Implement `handlePickImage` using `ImagePicker.launchImageLibraryAsync`.
+    - [x] Implement `uploadAvatar` flow:
+        - [x] Build `FormData` with the selected image asset.
+        - [x] Send `POST /api/user/avatar` via authenticated Axios `client.ts`.
+        - [x] On success, call `auth.currentUser.reload()` and push to `setUser()`.
+- [x] **UI Polish:**
+    - [x] Camera icon overlaid on avatar triggers picker; shows `ActivityIndicator` while uploading.
+    - [x] Stats row is disabled/grayed during loading state.
+    - [x] Logout confirmation alert with destructive styling.
 
 ---
 
 ## ✅ Verification Checklist
-- [ ] **Backend Test:** Does the `/api/users/avatar` endpoint correctly accept `multipart/form-data` and return a Cloudinary URL?
-- [ ] **Sync Indicator:** Do offline scans show up in History with a "Pending" badge?
-- [ ] **Navigation:** Can you click a history item and navigate cleanly between `index.tsx` and `[id].tsx`?
-- [ ] **Avatar Upload:** Does picking a new photo update the UI, Cloudinary, and Firebase Auth?
+- [x] **Backend Test:** Does the `/api/user/avatar` endpoint correctly accept `multipart/form-data` and return a Cloudinary URL?
+- [x] **Sync Indicator:** Do offline scans show up in History with a "Pending" badge?
+- [x] **Infinite Scroll:** Does scrolling down trigger `fetchNextPage` and load more cloud history?
+- [x] **Manual Retry:** Does the "Retry Sync" button appear for failed scans and successfully trigger a new sync attempt?
+- [x] **Avatar Upload:** Does picking a new photo update the UI, Cloudinary, and Firebase Auth?

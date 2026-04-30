@@ -20,12 +20,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   getPaginatedUserScans,
-  getTotalScansCount // <-- ADDED: Import the total count function
-  ,
+  getTotalScansCount,
   parseDateToMs,
   ScanHistoryItem
 } from "@/src/services/firebaseHistory";
 import { useAuthStore } from "@/src/store/useAuthStore";
+import { useNetworkStore } from "@/src/store/useNetworkStore"; // <-- IMPORT YOUR GLOBAL STORE
 import { useSyncStore } from "@/src/store/useSyncStore";
 
 import { HistoryCard } from "@/src/components/history/history-card";
@@ -40,10 +40,15 @@ export default function HistoryScreen() {
   const { user } = useAuthStore();
   const { syncQueue } = useSyncStore();
   const insets = useSafeAreaInsets(); 
+  
+  // <-- USE YOUR GLOBAL NETWORK STORE HERE -->
+  // Change `isOnline` to whatever property name you use in useNetworkStore (e.g., isConnected)
+  const isOnline = useNetworkStore((state: any) => state.isOnline); 
+  const isOffline = !isOnline; 
 
   // Data State
   const [cloudItems, setCloudItems] = useState<ScanHistoryItem[]>([]);
-  const [cloudTotalCount, setCloudTotalCount] = useState<number>(0); // <-- ADDED: State to track overall cloud total
+  const [cloudTotalCount, setCloudTotalCount] = useState<number>(0); 
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
   
   // Pagination State
@@ -68,6 +73,13 @@ export default function HistoryScreen() {
       setLoadingInitial(false);
       return;
     }
+
+    // Skip Firebase fetching if we are offline
+    if (isOffline) {
+      setLoadingInitial(false);
+      setRefreshing(false);
+      return;
+    }
     
     if (isRefresh) setRefreshing(true);
     else setLoadingInitial(true);
@@ -76,14 +88,13 @@ export default function HistoryScreen() {
     try {
       const order = sortFilter === "newest" ? "desc" : "asc";
       
-      // <-- ADDED: Fetch both the first page of items AND the overall total count simultaneously
       const [result, totalCountFromDb] = await Promise.all([
         getPaginatedUserScans(user.uid, order, null, PAGE_SIZE),
         getTotalScansCount(user.uid)
       ]);
       
       setCloudItems(result.items);
-      setCloudTotalCount(totalCountFromDb); // <-- ADDED: Save the overall cloud count
+      setCloudTotalCount(totalCountFromDb); 
       setLastDoc(result.lastDoc);
       setHasMore(result.hasMore);
     } catch (err: any) {
@@ -93,11 +104,11 @@ export default function HistoryScreen() {
       setLoadingInitial(false);
       setRefreshing(false);
     }
-  }, [user?.uid, sortFilter]);
+  }, [user?.uid, sortFilter, isOffline]);
 
   // ── Fetch Next Page (Infinite Scroll) ───────────────────────────────────────
   const fetchNextPage = useCallback(async () => {
-    if (!user?.uid || !hasMore || isFetchingMore || loadingInitial) return;
+    if (!user?.uid || !hasMore || isFetchingMore || loadingInitial || isOffline) return;
 
     setIsFetchingMore(true);
     try {
@@ -112,9 +123,8 @@ export default function HistoryScreen() {
     } finally {
       setIsFetchingMore(false);
     }
-  }, [user?.uid, hasMore, isFetchingMore, loadingInitial, lastDoc, sortFilter]);
+  }, [user?.uid, hasMore, isFetchingMore, loadingInitial, lastDoc, sortFilter, isOffline]);
 
-  // Ensures tab animation finishes before fetching
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       fetchInitialScans();
@@ -145,17 +155,21 @@ export default function HistoryScreen() {
   }, [cloudItems, syncQueue, sortFilter]);
 
   const displayData = useMemo(() => {
+    // If offline, force ONLY pending local items to show
+    if (isOffline) {
+      return mergedData.filter(item => item.status === "pending");
+    }
     return mergedData.filter(item => statusFilter === "all" ? true : item.status === statusFilter);
-  }, [mergedData, statusFilter]);
+  }, [mergedData, statusFilter, isOffline]);
 
   const pendingCount = mergedData.filter(item => item.status === "pending").length;
   
-  // <-- UPDATED: Total count is now the true cloud total + any items waiting to sync
-  const totalCount = cloudTotalCount + pendingCount;
+  // If offline, the "total" is just the pending local items. 
+  const totalCount = isOffline ? pendingCount : cloudTotalCount + pendingCount;
 
   // ── Card Press Handler ──────────────────────────────────────────────────────
   const handleCardPress = useCallback((item: ScanHistoryItem) => {
-    setSelectedScanId(item.id); // Triggers the modal to open
+    setSelectedScanId(item.id); 
   }, []);
 
   // ── Layout Calculations ─────────────────────────────────────────────────────
@@ -170,12 +184,23 @@ export default function HistoryScreen() {
         <HistoryHeader
           totalCount={totalCount}
           pendingCount={pendingCount}
-          statusFilter={statusFilter}
+          statusFilter={isOffline ? "pending" : statusFilter} // Force pending visual if offline
           sortFilter={sortFilter}
           onStatusChange={setStatusFilter}
           onSortChange={() => setSortFilter(prev => prev === "newest" ? "oldest" : "newest")}
+          isOffline={isOffline} // Pass to Header to hide synced pills
         />
       </View>
+
+      {/* EXPLICIT OFFLINE WARNING BANNER */}
+      {isOffline && (
+        <View className="bg-red-50 px-4 py-3 flex-row items-center justify-center border-b border-red-200">
+          <Feather name="wifi-off" size={16} color="#dc2626" />
+          <Text className="text-red-700 text-xs font-semibold ml-2">
+            No internet. Only displaying local unsynced scans.
+          </Text>
+        </View>
+      )}
 
       {loadingInitial ? (
         <View className="flex-1 items-center justify-center pb-20">
@@ -191,17 +216,17 @@ export default function HistoryScreen() {
           onEndReached={fetchNextPage}
           onEndReachedThreshold={0.5}
           
-          ListEmptyComponent={<HistoryEmptyState filter={statusFilter} />}
+          ListEmptyComponent={<HistoryEmptyState filter={isOffline ? "pending" : statusFilter} />}
           
           ListFooterComponent={
             <View className="w-full pb-6">
-              {error && (
+              {error && !isOffline && (
                 <View className="mx-4 my-2 p-3 bg-red-50 rounded-xl border border-red-200 flex-row gap-3 items-center">
                   <Feather name="alert-circle" size={18} color="#ef4444" />
                   <Text className="flex-1 text-xs font-medium text-red-800">{error}</Text>
                 </View>
               )}
-              {isFetchingMore && (
+              {isFetchingMore && !isOffline && (
                 <View className="py-4 items-center justify-center">
                   <ActivityIndicator size="small" color="#16a34a" />
                 </View>
@@ -215,6 +240,7 @@ export default function HistoryScreen() {
               onRefresh={() => fetchInitialScans(true)}
               tintColor="#16a34a"
               colors={["#16a34a"]}
+              enabled={!isOffline} // Disable pull-to-refresh if offline
             />
           }
           

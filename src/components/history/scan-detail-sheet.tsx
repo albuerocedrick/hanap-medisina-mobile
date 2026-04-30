@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getScanById, parseDateToMs, ScanHistoryItem } from "@/src/services/firebaseHistory";
 import { getAllPlants, PlantSummary } from "@/src/services/firebaseLibrary";
 import { useAuthStore } from "@/src/store/useAuthStore";
+import { useNetworkStore } from "@/src/store/useNetworkStore";
 import { useSyncStore } from "@/src/store/useSyncStore";
 
 interface Props {
@@ -28,9 +29,11 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { syncQueue } = useSyncStore();
+  const { syncQueue, resetRetryCount, runSync, isRunningSync } = useSyncStore();
+  const isOnline = useNetworkStore((s) => s.isOnline);
 
   const [scan, setScan] = useState<ScanHistoryItem | null>(null);
+  const [scanRetryCount, setScanRetryCount] = useState(0); // raw retryCount from queue
   const [libraryMatch, setLibraryMatch] = useState<PlantSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,7 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
         // 1. Check Offline Queue First
         const localMatch = syncQueue.find((item) => item.localId === sid);
         if (localMatch) {
+          setScanRetryCount(localMatch.retryCount); // capture for the retry button
           currentScan = {
             id: localMatch.localId,
             plantName: localMatch.plantName || "Unknown Plant",
@@ -91,6 +95,13 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
       loadScanData(user.uid, activeScanId);
     }
   }, [scanId, visible, user?.uid, syncQueue]);
+
+  // ── Manual Retry Handler ────────────────────────────────────────────────────
+  const handleRetryScan = async () => {
+    if (!scan || !isOnline || isRunningSync) return;
+    resetRetryCount(scan.id);  // unblacklist the scan
+    await runSync();           // immediately attempt upload
+  };
 
   const formatDate = (ms: number) => {
     if (!ms) return "Unknown Date";
@@ -239,13 +250,39 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
             </View>
 
             {/* Actions */}
-            <View className="px-6">
+            <View className="px-6 gap-3">
+              {/* Retry Sync Button — only for blacklisted pending scans */}
+              {scan?.status === "pending" && scanRetryCount >= 3 && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={!isOnline || isRunningSync}
+                  onPress={handleRetryScan}
+                  className={`w-full flex-row items-center justify-center gap-2 py-3.5 rounded-xl border ${
+                    !isOnline
+                      ? "bg-slate-100 border-slate-200"
+                      : "bg-amber-500 border-amber-600 shadow-sm"
+                  }`}
+                >
+                  {isRunningSync ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Feather name="refresh-cw" size={16} color={!isOnline ? "#94a3b8" : "white"} />
+                  )}
+                  <Text className={`text-sm font-bold ${
+                    !isOnline ? "text-slate-400" : "text-white"
+                  }`}>
+                    {!isOnline ? "No Connection to Sync" : isRunningSync ? "Syncing…" : "Retry Sync"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Library navigation or fallback */}
               {libraryMatch ? (
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
-                    onClose(); // Hide sheet first
-                    router.push(`/(tabs)/library/${libraryMatch.id}`); // Then navigate
+                    onClose();
+                    router.push(`/(tabs)/library/${libraryMatch.id}`);
                   }}
                   className="w-full bg-[#16a34a] flex-row items-center justify-center gap-2 py-3.5 rounded-xl shadow-sm"
                 >

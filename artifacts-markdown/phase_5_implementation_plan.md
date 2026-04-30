@@ -37,38 +37,38 @@ Before the frontend can upload avatars, the backend needs the necessary endpoint
 With the backend established, proceed to build the unified offline/online history views.
 
 #### A. History View (`app/(tabs)/history/index.tsx`)
-*Note: This replaces the previous `history.tsx` to allow nested routing.*
-**Goal:** Display a unified list of all past plant scans.
-1.  **Cloud Data Fetching:** Use `useFocusEffect` or a Firestore `onSnapshot` listener to fetch the user's scan documents from the `scans` collection (`where('userId', '==', currentUser.uid)`), ordered by `createdAt` descending.
-2.  **Local Data Access:** Retrieve the `syncQueue` array from the existing `useSyncStore`.
-3.  **Merge & Sort:** Combine the local `syncQueue` items and the remote Firestore items into a single array. Sort the combined array by timestamp.
-4.  **UI Representation:** Render the combined list. Local, unsynced items MUST display a visual indicator (e.g., a cloud with a slash icon, or "Pending Sync" tag).
+**Goal:** Display a unified list of all past plant scans with high performance.
+1.  **Pagination:** Implement infinite scrolling using `getDocs` with `startAfter` to avoid loading the entire collection. Use `getCountFromServer` for efficient total counts.
+2.  **Merge & Sort:** Combine local `syncQueue` items and remote Firestore items. Dedup items that have transitioned from local to cloud.
+3.  **UI Representation:** Render the combined list using `FlatList`. Group UI into `HistoryHeader`, `HistoryCard`, and `HistoryEmptyState`.
 
-#### B. Scan Details View (`app/(tabs)/history/[id].tsx`)
-**Goal:** Provide an in-depth view of a specific scan from history.
-1.  **Routing:** Utilize Expo Router's local parameters to receive the scan ID.
-2.  **Dual-Source Retrieval:**
-    *   If the ID corresponds to an offline scan, retrieve the data from `useSyncStore`.
-    *   Otherwise, fetch the specific document from the Firestore `scans` collection.
-3.  **UI Components:** Display the high-resolution image, the identified species name, confidence percentage, and any associated care instructions.
+#### B. Scan Details Modal (`src/components/history/scan-detail-sheet.tsx`)
+**Goal:** Provide an in-depth view of a specific scan via a responsive bottom sheet.
+1.  **Modal Architecture:** Use a `Modal` (Bottom Sheet) instead of a separate screen route for faster interactions.
+2.  **Dual-Source Retrieval:** Check `syncQueue` first (for offline scans), then fall back to Firestore.
+3.  **Library Integration:** Cross-reference the identified plant with the Library collection to show a reference image and link to the full plant documentation.
+4.  **Manual Retry:** Provide a "Retry Sync" button for scans that failed automatic sync attempts (blacklisted items).
 
 ---
 
 ### Step 3: Frontend Profile Polish (`hanap-medisina-mobile`)
 Finally, connect the frontend profile screen to the new backend avatar endpoints.
 
-#### A. Profile Dashboard (`app/(tabs)/profile.tsx`)
+#### A. Profile Dashboard (`app/(tabs)/profile.tsx` and `src/components/profile/`)
 **Goal:** Allow users to manage their account and upload an avatar.
-1.  **Image Selection:** Integrate `expo-image-picker` to allow the user to select an image from their device gallery or camera.
-2.  **Upload Request:**
+1.  **Component Architecture:** Break down the UI into smaller, reusable components inside `src/components/profile/` (e.g., `ProfileHeader`, `StatsCard`).
+2.  **Image Selection:** Integrate `expo-image-picker` to allow the user to select an image from their device gallery or camera.
+3.  **Upload Request:**
     *   Construct a `FormData` object appending the selected image file.
     *   Send a `POST` request to `/api/users/avatar` via the pre-configured Axios `client.ts`.
-3.  **State Update:** Upon a successful response from the backend, update the local Firebase Auth state (`auth.currentUser.reload()`) to reflect the newly uploaded `photoURL` and trigger a re-render.
-4.  **Statistics (Optional Polish):** Query and display aggregate data, such as total scans performed.
+4.  **State Update:** Upon a successful response from the backend, update the local Firebase Auth state (`auth.currentUser.reload()`) to reflect the newly uploaded `photoURL` and trigger a re-render.
+5.  **Statistics & Meta:** 
+    *   Query and display aggregate data, such as total scans performed using `getTotalScansCount`.
+    *   Display the user's account creation date formatted as "Member since [Month] [Year]" (extracted from Firebase Auth metadata).
 
 ---
 
 ## 4. DevSecOps & QA Considerations
-*   **File Validation:** Multer configuration MUST restrict uploads to image mime types (`image/jpeg`, `image/png`, `image/webp`) and enforce a strict file size limit (e.g., 5MB).
-*   **Race Conditions:** The mobile UI MUST disable the avatar upload button and show a loading spinner while the upload request is pending to prevent duplicate submissions.
-*   **Error Handling:** Ensure the backend gracefully handles Cloudinary upload failures and returns appropriate HTTP error codes without crashing the Express process.
+*   **File Validation:** Multer configuration MUST restrict uploads to image mime types and enforce a strict file size limit (5MB).
+*   **Race Conditions:** Disable upload buttons and show loading spinners while requests are pending.
+*   **Offline Robustness:** Guard all network-dependent functions (pagination, manual retry) with network status checks to prevent silent failures.

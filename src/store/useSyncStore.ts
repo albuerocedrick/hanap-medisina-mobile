@@ -41,6 +41,12 @@ interface SyncActions {
   markSyncing: (localId: string, isSyncing: boolean) => void;
   /** Track a failed upload attempt */
   incrementRetry: (localId: string) => void;
+  /**
+   * Resets the retryCount for a specific scan back to 0,
+   * making it eligible for automatic sync again.
+   * Call this before runSync() when the user manually requests a retry.
+   */
+  resetRetryCount: (localId: string) => void;
   /** Clear any global store errors */
   clearError: () => void;
   /** Clear last sync error banner */
@@ -127,6 +133,16 @@ export const useSyncStore = create<SyncState & SyncActions>()(
         }));
       },
 
+      resetRetryCount: (localId) => {
+        set((state) => ({
+          syncQueue: state.syncQueue.map((item) =>
+            item.localId === localId
+              ? { ...item, retryCount: 0, isSyncing: false }
+              : item
+          ),
+        }));
+      },
+
       clearError: () => set({ error: null }),
       clearSyncError: () => set({ syncError: null }),
 
@@ -188,10 +204,9 @@ export const useSyncStore = create<SyncState & SyncActions>()(
             for (const res of synced) {
               // Clean up the local file to free disk space
               try {
-                const localFile = new FileSystem.File(item.imageUri);
-                if (localFile.exists) localFile.delete();
-              } catch {
-                // Silently ignore — the sync succeeded even if cleanup fails
+                await FileSystem.deleteAsync(item.imageUri, { idempotent: true });
+              } catch (err) {
+                console.warn("[useSyncStore] Failed to delete local file:", err);
               }
               dequeueScan(res.localId);
             }
