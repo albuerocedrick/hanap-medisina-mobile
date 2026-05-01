@@ -85,7 +85,7 @@ export default function LibraryFeed() {
         <View className="flex-1 items-center justify-center pt-20 px-6">
           <ActivityIndicator size="large" color="#16a34a" />
           <Text className="text-gray-500 mt-4 text-center font-medium">
-            Loading plant library... test lang
+            Loading plant library...
           </Text>
         </View>
       );
