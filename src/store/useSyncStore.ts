@@ -196,6 +196,7 @@ export const useSyncStore = create<SyncState & SyncActions>()(
 
             const response = await apiClient.post("/api/scans/sync", formData, {
               headers: { "Content-Type": "multipart/form-data" },
+              transformRequest: (data) => data,
               timeout: 20000,
             });
 
