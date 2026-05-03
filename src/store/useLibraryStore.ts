@@ -7,8 +7,7 @@
  * Phase 3:
  *  - Fetches plant list and categories from Firestore (online only).
  *  - Persists full Plant objects as favorites to AsyncStorage.
- *  - `getDisplayedPlants()` automatically gates between online list
- *    and offline favorites-only view.
+ *  - `getDisplayedPlants()` uses the `plants` list as source of truth.
  *  - Search and filter run client-side (zero extra reads).
  *
  * Phase 4:
@@ -18,6 +17,14 @@
  *    after a successful backend handshake.
  *  - `useNetworkStore.setHasPendingSync()` is called automatically
  *    whenever the queue grows or shrinks.
+ *
+ * Phase 6:
+ *  - `plants` is now persisted to AsyncStorage alongside `favorites`.
+ *    This enables full offline search for ALL plants in the database,
+ *    not just favorited ones. The last successfully fetched plant list
+ *    is available instantly on next app launch, even without internet.
+ *  - `getDisplayedPlants()` always uses `plants` as the source list.
+ *    Offline simply means the last cached version is used automatically.
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -147,10 +154,14 @@ interface LibraryActions {
   /**
    * Derived selector: returns the list the Library feed should display.
    *
-   * Online:  `plants` filtered by `searchQuery`.
-   * Offline: `favorites` filtered by `searchQuery`.
+   * Online:  `plants` fetched fresh from Firestore, filtered by `searchQuery`.
+   * Offline: `plants` from AsyncStorage cache, filtered by `searchQuery`.
    *
-   * This is the ONLY place the online/offline gate logic lives.
+   * Since `plants` is now persisted (Phase 6), offline search works for
+   * ALL plants — not just favorites. The cached list is used automatically
+   * when the device has no internet connection.
+   *
+   * This is the ONLY place the display source logic lives.
    * Components never read `plants` or `favorites` directly for display.
    */
   getDisplayedPlants: () => (PlantSummary | Plant)[];
@@ -306,20 +317,13 @@ export const useLibraryStore = create<LibraryStore>()(
       },
 
       getDisplayedPlants: () => {
-        const { plants, favorites, searchQuery } = get();
-        const isOnline = useNetworkStore.getState().isOnline;
+        const { plants, searchQuery } = get();
 
-        // ── Offline gate ───────────────────────────────────────────────────
-        // When offline, ONLY show favorites regardless of any other state.
-        const sourceList: PlantSummary[] = isOnline
-          ? plants
-          : favorites.map((f) => ({
-              id: f.id,
-              name: f.name,
-              scientificName: f.scientificName,
-              imageUrl: f.imageUrl,
-              categories: f.categories,
-            }));
+        // ── Phase 6: Always use `plants` as the source list ────────────────
+        // `plants` is now persisted to AsyncStorage, so it is available both
+        // online (fresh from Firestore) and offline (last cached version).
+        // This enables full-dictionary search without a network connection.
+        const sourceList: PlantSummary[] = plants;
 
         // ── Client-side search ─────────────────────────────────────────────
         return searchPlantsLocally(sourceList, searchQuery);
@@ -437,14 +441,16 @@ export const useLibraryStore = create<LibraryStore>()(
     }),
 
     // ── Persist Config ─────────────────────────────────────────────────────
-    // Only persist what must survive app restarts.
-    // `plants`, `categories`, and UI state are always re-fetched fresh.
+    // Persists `favorites` (full Plant objects for offline detail views) and
+    // `plants` (lightweight summaries for offline search — Phase 6).
+    // `categories` and UI state are always re-fetched fresh each session.
     {
       name: "library-store",
       storage: createJSONStorage(() => AsyncStorage),
 
       partialize: (state) => ({
         favorites: state.favorites,
+        plants: state.plants, // Phase 6: enables full offline search
       }),
 
       /**

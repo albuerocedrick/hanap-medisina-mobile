@@ -144,9 +144,11 @@ function SuccessState({
 
   const syncDot  = saveStatus?.includes("cloud") ? tokens.green
                  : saveStatus?.includes("failed") ? "#f87171"
+                 : saveStatus?.includes("Saving") ? tokens.mutedLight
                  : "#fbbf24";
   const syncText = saveStatus?.includes("cloud")   ? "Synced to cloud"
                  : saveStatus?.includes("failed")   ? "Queued locally"
+                 : saveStatus?.includes("Saving")   ? "Saving..."
                  : saveStatus                        ? "Saved offline"
                  : null;
 
@@ -459,63 +461,69 @@ export default function ScanScreen() {
         return;
       }
 
-      // ── 5. Accepted — show result, then handle storage ────────────────────
+      // ── 5. Accepted — show result immediately, then handle storage ────────
       const scanId = `scan_${Date.now()}`;
       setResult({ label: identifiedLabel, confidence: confidencePercent });
-
-      if (isOnline) {
-        // ── Online path: upload directly from the temp photo path.
-        // Only write a permanent local copy if the upload fails.
-        try {
-          const formData = new FormData();
-          formData.append("images", {
-            uri:  localUri,
-            name: `${scanId}.jpg`,
-            type: "image/jpeg",
-          } as any);
-          formData.append(
-            "scans",
-            JSON.stringify([{
-              localId:    scanId,
-              plantName:  identifiedLabel,
-              confidence: confidencePercent,
-              details:    "",
-              scannedAt:  new Date().toISOString(),
-            }]),
-          );
-          await apiClient.post("/api/scans/sync", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-            transformRequest: (data) => data,
-          });
-          setSaveStatus("Saved to cloud");
-        } catch (error) {
-          console.error("Upload failed in ScanScreen:", error);
-          // Upload failed — persist locally and queue for later retry.
-          const offlineDir = new FileSystem.Directory(
-            FileSystem.Paths.document,
-            "offline-scans",
-          );
-          if (!offlineDir.exists) offlineDir.create();
-          const permanentFile = new FileSystem.File(offlineDir, `${scanId}.jpg`);
-          new FileSystem.File(localUri).copy(permanentFile);
-          enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
-          setSaveStatus("Upload failed — saved offline");
-        }
-      } else {
-        // ── Offline path: persist locally and queue for sync when back online.
-        const offlineDir = new FileSystem.Directory(
-          FileSystem.Paths.document,
-          "offline-scans",
-        );
-        if (!offlineDir.exists) offlineDir.create();
-        const permanentFile = new FileSystem.File(offlineDir, `${scanId}.jpg`);
-        new FileSystem.File(localUri).copy(permanentFile);
-        enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
-        setSaveStatus("Saved offline — will sync later");
-      }
-
       setSheetState("success");
-      setTimeout(() => setSaveStatus(null), 3500);
+      setSaveStatus("Saving...");
+
+      // Run storage logic asynchronously so it doesn't block the UI
+      (async () => {
+        try {
+          if (isOnline) {
+            // ── Online path: upload directly from the temp photo path.
+            // Only write a permanent local copy if the upload fails.
+            try {
+              const formData = new FormData();
+              formData.append("images", {
+                uri:  localUri,
+                name: `${scanId}.jpg`,
+                type: "image/jpeg",
+              } as any);
+              formData.append(
+                "scans",
+                JSON.stringify([{
+                  localId:    scanId,
+                  plantName:  identifiedLabel,
+                  confidence: confidencePercent,
+                  details:    "",
+                  scannedAt:  new Date().toISOString(),
+                }]),
+              );
+              await apiClient.post("/api/scans/sync", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+                transformRequest: (data) => data,
+              });
+              setSaveStatus("Saved to cloud");
+            } catch (error) {
+              console.error("Upload failed in ScanScreen:", error);
+              // Upload failed — persist locally and queue for later retry.
+              const offlineDir = new FileSystem.Directory(
+                FileSystem.Paths.document,
+                "offline-scans",
+              );
+              if (!offlineDir.exists) offlineDir.create();
+              const permanentFile = new FileSystem.File(offlineDir, `${scanId}.jpg`);
+              new FileSystem.File(localUri).copy(permanentFile);
+              enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
+              setSaveStatus("Upload failed — saved offline");
+            }
+          } else {
+            // ── Offline path: persist locally and queue for sync when back online.
+            const offlineDir = new FileSystem.Directory(
+              FileSystem.Paths.document,
+              "offline-scans",
+            );
+            if (!offlineDir.exists) offlineDir.create();
+            const permanentFile = new FileSystem.File(offlineDir, `${scanId}.jpg`);
+            new FileSystem.File(localUri).copy(permanentFile);
+            enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
+            setSaveStatus("Saved offline — will sync later");
+          }
+        } finally {
+          setTimeout(() => setSaveStatus(null), 3500);
+        }
+      })();
 
     } catch (err) {
       console.error("Inference Error:", err);

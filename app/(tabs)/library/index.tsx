@@ -113,18 +113,21 @@ export default function LibraryFeed() {
       );
     }
 
-    if (!isOnline && favorites.length === 0) {
+    // Phase 6: plants are now persisted to AsyncStorage so offline users
+    // can still browse and search the full cached library.
+    // Only show this state if no plants were ever loaded (first install, never connected).
+    if (!isOnline && plants.length === 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
           <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
             <Ionicons name="cloud-offline-outline" size={32} color="#9CA3AF" />
           </View>
           <Text className="text-gray-900 font-semibold text-lg text-center">
-            No Offline Plants
+            No Cached Plants Yet
           </Text>
           <Text className="text-gray-500 mt-2 text-center">
-            You haven't saved any plants to your favorites yet. Reconnect to the
-            internet to browse the full library.
+            Connect to the internet once to download the plant library for offline
+            use.
           </Text>
         </View>
       );
@@ -172,12 +175,12 @@ export default function LibraryFeed() {
       <SearchBar />
       <FilterPills />
 
+      {/* Phase 6: Cached library is available offline — show a softer info banner */}
       {!isOnline && (
-        <View className="mx-4 mt-2 mb-1 bg-amber-50 border border-amber-200 rounded-lg flex-row items-center p-3">
-          <Ionicons name="warning-outline" size={20} color="#d97706" />
-          <Text className="text-amber-800 ml-2 text-sm flex-1">
-            Offline Mode: Showing only your saved plants. Connect to the
-            internet for full access.
+        <View className="mx-4 mt-2 mb-1 bg-blue-50 border border-blue-200 rounded-lg flex-row items-center p-3">
+          <Ionicons name="archive-outline" size={18} color="#1d4ed8" />
+          <Text className="text-blue-800 ml-2 text-sm flex-1">
+            Offline — showing cached library. Some details may be unavailable.
           </Text>
         </View>
       )}

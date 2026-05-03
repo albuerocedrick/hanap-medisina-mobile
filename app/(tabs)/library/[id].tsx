@@ -48,6 +48,8 @@ export default function PlantDetailsScreen() {
   const isFavorite = useLibraryStore((s) => s.isFavorite(id as string));
   const toggleFavorite = useLibraryStore((s) => s.toggleFavorite);
   const favorites = useLibraryStore((s) => s.favorites);
+  // Phase 6: persisted summary list for partial offline fallback
+  const cachedPlants = useLibraryStore((s) => s.plants);
 
   // ─── Local State ─────────────────────────────────────────────────────────
   const [plant, setPlant] = useState<Plant | null>(null);
@@ -55,6 +57,9 @@ export default function PlantDetailsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("details");
   const [imageError, setImageError] = useState<boolean>(false);
+  // Phase 6: True when showing partial data from the cached summary list
+  // (offline + not in favorites). Research and Compare tabs are hidden.
+  const [isPartialOffline, setIsPartialOffline] = useState<boolean>(false);
 
   // Look-alikes State
   const [lookAlikes, setLookAlikes] = useState<PlantSummary[]>([]);
@@ -73,12 +78,32 @@ export default function PlantDetailsScreen() {
       try {
         if (isOnline) {
           fetchedPlant = await getPlantById(id);
+          setIsPartialOffline(false);
         } else {
+          // Offline: try favorites first (full Plant object)
           fetchedPlant = favorites.find((f) => f.id === id) || null;
-          if (!fetchedPlant && isMounted) {
-            setError(
-              "This plant is not available offline. Please connect to the internet or save it to your favorites.",
-            );
+
+          if (fetchedPlant) {
+            setIsPartialOffline(false);
+          } else {
+            // Phase 6: fall back to the persisted plants summary list.
+            // Build a minimal Plant object so the image + name + categories
+            // still render. Research and Compare tabs are hidden in this mode.
+            const summary = cachedPlants.find((p) => p.id === id);
+            if (summary) {
+              fetchedPlant = {
+                ...summary,
+                lookAlikeIds: [],
+                details: { localName: "", preparation: [], facts: {}, warnings: [] },
+                research: [],
+                comparisonTraits: { leaf: "", flower: "", stem: "", smell: "" },
+              };
+              setIsPartialOffline(true);
+            } else if (isMounted) {
+              setError(
+                "This plant is not available offline. Connect to the internet to view its details.",
+              );
+            }
           }
         }
         if (isMounted && fetchedPlant) setPlant(fetchedPlant);
@@ -235,7 +260,7 @@ export default function PlantDetailsScreen() {
           <View className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 to-transparent opacity-100" />
         </View>
 
-        {/* ─── Plant Header Info ──────────────────────────────────────────── */}
+        {/* ─── Plant Header Info ───────────────────────────────────────── */}
         <View className="px-6 pt-4 pb-2 bg-gray-50">
           <Text className="text-3xl font-extrabold text-gray-900 leading-tight">
             {plant.name}
@@ -243,6 +268,16 @@ export default function PlantDetailsScreen() {
           <Text className="text-gray-500 italic text-base mt-1">
             {plant.scientificName}
           </Text>
+
+          {/* Phase 6: Partial offline banner */}
+          {isPartialOffline && (
+            <View className="mt-3 bg-amber-50 border border-amber-200 rounded-xl flex-row items-center p-3">
+              <Ionicons name="archive-outline" size={16} color="#d97706" />
+              <Text className="text-amber-800 ml-2 text-xs flex-1 font-medium">
+                Offline — showing basic info only. Connect to see full details.
+              </Text>
+            </View>
+          )}
 
           {/* Categories */}
           {plant.categories?.length > 0 && (
@@ -262,8 +297,12 @@ export default function PlantDetailsScreen() {
         </View>
 
         {/* ─── Sub-Tabs Navigation ────────────────────────────────────────── */}
+        {/* Phase 6: Research and Compare tabs are hidden in partial offline mode */}
         <View className="flex-row px-4 mt-4 border-b border-gray-200">
-          {(["details", "research", "compare"] as TabKey[]).map((tab) => {
+          {(isPartialOffline
+            ? (["details"] as TabKey[])
+            : (["details", "research", "compare"] as TabKey[])
+          ).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <TouchableOpacity

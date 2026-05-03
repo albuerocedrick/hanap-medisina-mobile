@@ -8,6 +8,7 @@ import SyncStatusBanner from "../src/components/global/SyncStatusBanner";
 import { useNetworkSync } from "../src/hooks/useNetworkSync";
 import { auth } from "../src/services/firebase";
 import { useAuthStore } from "../src/store/useAuthStore";
+import { useFeedStore } from "../src/store/useFeedStore";
 import { useNetworkStore } from "../src/store/useNetworkStore";
 
 export default function RootLayout() {
@@ -61,6 +62,15 @@ export default function RootLayout() {
       }
     }
   }, [user, segments, isInitializing]);
+
+  // Phase 6: Fetch home feed once the authenticated user is confirmed.
+  // Runs in the background — the store hydrates from AsyncStorage first
+  // so the UI is never blocked waiting for this network call.
+  useEffect(() => {
+    if (user && user.emailVerified) {
+      useFeedStore.getState().fetchHomeFeed();
+    }
+  }, [user]);
 
   if (isInitializing) {
     return (
