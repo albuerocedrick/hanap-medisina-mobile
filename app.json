@@ -34,7 +34,6 @@
     "plugins": [
       "expo-router",
       "react-native-fast-tflite",
-      "react-native-vision-camera",
       "expo-asset",
       [
         "react-native-vision-camera",
@@ -42,7 +41,16 @@
           "cameraPermissionText": "HanapMedisina needs camera access to scan and identify medicinal plants.",
           "enableMicrophonePermission": false
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true
