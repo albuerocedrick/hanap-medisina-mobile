@@ -1,54 +1,73 @@
 import { Link, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
+  Animated,
+  Dimensions,
+  Image,
 } from "react-native";
 import { useAuthStore } from "../../src/store/useAuthStore";
+import * as Haptics from "expo-haptics";
+import { User, Lock, Mail } from "lucide-react-native";
+
+import Herbi from "../../src/components/Herbi"; // ✅ added
+
+import { Input } from "../../src/components/ui/Input";
+import { Button } from "../../src/components/ui/Button";
+
+const { width, height } = Dimensions.get("window");
+const HEADER_HEIGHT = height * 0.31;
+
+const BACKGROUND_IMAGE = require("../../assets/images/login-bg3.jpg");
+// ✅ removed AVATAR_IMAGE
 
 export default function RegisterScreen() {
   const router = useRouter();
-
   const { registerWithEmail, loginWithGoogle, isLoading } = useAuthStore();
 
-  // Local Form State
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const[firstName, setFirstName] = useState("");
+  const[lastName, setLastName] = useState("");
+  const[email, setEmail] = useState("");
+  const[password, setPassword] = useState("");
+  const[confirmPassword, setConfirmPassword] = useState("");
+  const[errorMessage, setErrorMessage] = useState("");
+
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const handleRegister = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setErrorMessage("");
 
-    // Local UI Validation
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return setErrorMessage("All fields are required.");
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return setErrorMessage("Please enter a valid email address.");
     }
 
     if (password.length < 6) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return setErrorMessage("Password must be at least 6 characters long.");
     }
 
     if (password !== confirmPassword) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return setErrorMessage("Passwords do not match.");
     }
 
-    // passing the data to zustand
     try {
       await registerWithEmail(firstName, lastName, email, password);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (error.code === "auth/email-already-in-use") {
         setErrorMessage("An account with this email already exists.");
       } else if (error.code === "auth/invalid-email") {
@@ -63,128 +82,180 @@ export default function RegisterScreen() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    loginWithGoogle();
+  };
+
+  const headerScale = scrollY.interpolate({
+    inputRange:[-100, 0],
+    outputRange: [1.3, 1],
+    extrapolateLeft: "extend",
+    extrapolateRight: "clamp",
+  });
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange:[0, -(HEADER_HEIGHT * 0.4)],
+    extrapolate: "clamp",
+  });
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-white justify-center px-6"
-    >
-      <View className="mb-8">
-        <Text className="text-3xl font-bold text-gray-900 mb-2">
-          Create Account
-        </Text>
-        <Text className="text-base text-gray-500">Join HanapDamo today.</Text>
-      </View>
+    <View className="flex-1 bg-[#EAF3D5]">
+      <Animated.View
+        style={{
+          position: "absolute",
+          top: 0,
+          width: width,
+          height: HEADER_HEIGHT + 40,
+          transform:[{ scale: headerScale }, { translateY: headerTranslateY }],
+        }}
+      >
+        <Image 
+          source={BACKGROUND_IMAGE} 
+          style={{ width: "100%", height: "100%", position: "absolute" }} 
+          resizeMode="cover" 
+        />
+      </Animated.View>
 
-      {/* Error Message Display */}
-      {errorMessage ? (
-        <View className="bg-red-50 p-3 rounded-lg mb-4 border border-red-200">
-          <Text className="text-red-600 text-sm">{errorMessage}</Text>
-        </View>
-      ) : null}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
+        <Animated.ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+        >
+          <View style={{ height: HEADER_HEIGHT - 40 }} />
 
-      <View className="space-y-4">
-        {/* Name Row: Side-by-side using flex-row */}
-        <View className="flex-row space-x-4">
-          <View className="flex-1">
-            <Text className="text-sm font-medium text-gray-700 mb-1">
-              First Name
-            </Text>
-            <TextInput
-              className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-900"
-              placeholder="Jared"
-              value={firstName}
-              onChangeText={setFirstName}
+          <View 
+            className="flex-1 px-7 pt-6 pb-6 relative"
+            style={{ 
+              backgroundColor: "#FAFEEF", 
+              borderTopLeftRadius: 40, 
+              borderTopRightRadius: 40,
+              minHeight: height - (HEADER_HEIGHT - 40) 
+            }}
+          >
+            {/* 🌿 Herbi Mascot */}
+            <View
+              style={{
+                position: "absolute",
+                top: -135,  // ✅ matches login
+                right: 30,  // ✅ matches login
+                zIndex: 99,
+              }}
+            >
+              <Herbi />
+            </View>
+
+            <View className="mb-5 mt-2 pr-28">
+              <Text className="text-[32px] font-extrabold text-[#22451C] tracking-tight">
+                Create Account
+              </Text>
+              <Text className="text-[15px] text-[#4D8035] font-medium mt-1">
+                Join HanapDamo today.
+              </Text>
+            </View>
+
+            {errorMessage ? (
+              <Text className="text-red-500 text-sm font-medium mb-4 text-center">
+                {errorMessage}
+              </Text>
+            ) : null}
+
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Input
+                  icon={User}
+                  placeholder="First Name"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  editable={!isLoading}
+                />
+              </View>
+              <View className="flex-1">
+                <Input
+                  icon={User}
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  editable={!isLoading}
+                />
+              </View>
+            </View>
+
+            <Input
+              icon={Mail}
+              placeholder="Email address"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
               editable={!isLoading}
             />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-medium text-gray-700 mb-1">
-              Last Name
-            </Text>
-            <TextInput
-              className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-900"
-              placeholder="Smith"
-              value={lastName}
-              onChangeText={setLastName}
+
+            <Input
+              icon={Lock}
+              placeholder="Password (Min. 6)"
+              isPassword
+              value={password}
+              onChangeText={setPassword}
               editable={!isLoading}
             />
+
+            <Input
+              icon={Lock}
+              placeholder="Confirm Password"
+              isPassword
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              editable={!isLoading}
+            />
+
+            <View className="pt-2">
+              <Button 
+                title="Sign Up" 
+                onPress={handleRegister} 
+                isLoading={isLoading} 
+                variant="primary" 
+              />
+            </View>
+
+            <View className="flex-row items-center my-4 px-2">
+              <View className="flex-1 h-[1px] bg-[#A2CFA3]" />
+              <Text className="mx-4 text-[12px] text-[#4D8035] font-medium">OR</Text>
+              <View className="flex-1 h-[1px] bg-[#A2CFA3]" />
+            </View>
+
+            <Button 
+              title="Continue with Google" 
+              onPress={handleGoogleLogin} 
+              disabled={isLoading} 
+              variant="outline" 
+            />
+
+            <View className="flex-row justify-center mt-auto pb-2 pt-4">
+              <Text className="text-[#22451C] text-[14px] font-medium">
+                Already have an account?
+              </Text>
+              <Link href="/(auth)/login" asChild>
+               <TouchableOpacity
+                onPress={() => { Haptics.selectionAsync(); router.back();}}>
+                <Text className="text-[#70A656] text-[14px] font-bold ml-1.5">
+                  Log In
+                </Text>
+              </TouchableOpacity>
+              </Link>
+            </View>
+
           </View>
-        </View>
-
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1">Email</Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-900"
-            placeholder="jared@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-            editable={!isLoading}
-          />
-        </View>
-
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1">
-            Password
-          </Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-900"
-            placeholder="Min. 6 characters"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            editable={!isLoading}
-          />
-        </View>
-
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
-          </Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-900"
-            placeholder="Re-type password"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            editable={!isLoading}
-          />
-        </View>
-      </View>
-
-      {/* Main Register Button */}
-      <TouchableOpacity
-        onPress={handleRegister}
-        disabled={isLoading}
-        className={`mt-8 w-full py-4 rounded-xl items-center ${isLoading ? "bg-green-400" : "bg-green-600"}`}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text className="text-white text-lg font-semibold">Sign Up</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={loginWithGoogle}
-        disabled={isLoading}
-        className="mt-4 w-full py-4 rounded-xl items-center border border-gray-300 flex-row justify-center space-x-2"
-      >
-        <Text className="text-gray-700 text-lg font-semibold">
-          Continue with Google
-        </Text>
-      </TouchableOpacity>
-
-      {/* Navigate to Login */}
-      <View className="flex-row justify-center mt-6 gap-1">
-        <Text className="text-gray-600">Already have an account?</Text>
-        <Link href="/(auth)/login" asChild>
-          <TouchableOpacity disabled={isLoading}>
-            <Text className="text-green-600 font-semibold">Log In</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
-    </KeyboardAvoidingView>
+        </Animated.ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

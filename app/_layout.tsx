@@ -83,7 +83,13 @@ export default function RootLayout() {
   // 3. YOUR ORIGINAL STACK + SYNC MODAL OVERLAY
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack 
+        screenOptions={{ 
+          headerShown: false,
+          animation: "slide_from_right", // <-- Adds smooth sliding transition
+          animationDuration: 200,        // <-- Makes it snappy
+        }}
+      >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
       </Stack>
