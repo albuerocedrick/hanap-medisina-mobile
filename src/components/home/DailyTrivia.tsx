@@ -1,68 +1,41 @@
-/**
- * src/components/home/DailyTrivia.tsx
- *
- * Daily trivia fact card at the bottom of the Home Tab.
- * Rotates through 7 cached facts based on the day of the week —
- * no network call needed after the initial cache.
- *
- * Behaviour:
- *  - Calls useFeedStore.getTodayTrivia() to get today's fact.
- *  - Returns null (hides) if no trivia is available yet (not fetched).
- *  - Shows a skeleton while the feed is loading for the first time.
- *  - Works fully offline — weeklyTrivia is persisted by useFeedStore.
- *
- * Data sources (no props needed):
- *   useFeedStore → getTodayTrivia(), isLoadingFeed
- */
-
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Text, View } from "react-native";
 import { selectIsLoadingFeed, useFeedStore } from "../../store/useFeedStore";
 import { SkeletonTriviaCard } from "./HomeSkeletons";
-
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
+import { useColorScheme } from "nativewind";
 
 export function DailyTrivia() {
-  // ── Store subscriptions ──────────────────────────────────────────────────
   const getTodayTrivia = useFeedStore((s) => s.getTodayTrivia);
   const isLoadingFeed = useFeedStore(selectIsLoadingFeed);
-
   const trivia = getTodayTrivia();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
-  // ── Loading state ─────────────────────────────────────────────────────────
-  if (trivia === null && isLoadingFeed) {
-    return (
-      <View className="px-6 mb-6">
-        <SkeletonTriviaCard />
-      </View>
-    );
-  }
-
-  // ── Empty state: hide if no trivia available ──────────────────────────────
+  if (trivia === null && isLoadingFeed) return <View className="px-6 mb-8"><SkeletonTriviaCard /></View>;
   if (trivia === null) return null;
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View className="px-6 mb-6">
-      <View className="bg-[#f0f7f1] border border-[#dce7df] rounded-[20px] p-4">
-        <View className="flex-row items-start gap-3">
-          {/* Icon */}
-          <View className="w-9 h-9 bg-[#dce7df] rounded-full items-center justify-center mt-0.5">
-            <Feather name="zap" size={16} color="#4a7553" />
-          </View>
+    <View className="px-6 mb-8">
+      <Text
+        className="text-[#22451C] dark:text-[#EAF3D5] mb-3"
+        style={{ fontSize: 22, fontFamily: "serif", fontStyle: "italic", fontWeight: "500", letterSpacing: 0.4 }}
+      >
+        Daily Trivia
+      </Text>
 
-          {/* Content */}
-          <View className="flex-1">
-            <Text className="text-[#243b27] font-bold text-[12px] mb-1 uppercase tracking-wide">
-              Did You Know?
-            </Text>
-            <Text className="text-[#4a7553] text-[12px] font-medium leading-relaxed">
-              {trivia.text}
-            </Text>
+      <View className="bg-[#FAFEEF] dark:bg-white/5 border border-[#A2CFA3]/35 dark:border-white/10 rounded-[24px] p-4">
+        <View className="flex-row items-center">
+          <View style={{ width: 24, marginRight: 10, alignItems: "center", justifyContent: "center" }}>
+            <Feather
+              name="book-open"
+              size={19}
+              color={isDark ? "rgba(248,250,252,0.72)" : "#4D8035"}
+            />
           </View>
+          <Text className="flex-1 text-[#4D8035] dark:text-white/72 text-[13px] leading-[20px]">
+            {trivia.text}
+          </Text>
         </View>
       </View>
     </View>

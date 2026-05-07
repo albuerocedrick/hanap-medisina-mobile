@@ -1,56 +1,35 @@
-/**
- * src/components/home/PlantOfTheDay.tsx
- *
- * Large hero card featuring the curated "Plant of the Day".
- * Replaces the hard-coded "Featured Discovery" section in index.tsx
- * (lines 339–371) which showed a static Unsplash Tsaang Gubat image.
- *
- * Behaviour:
- *  - Shows a full-bleed plant image with a gradient overlay.
- *  - Displays the plant name, subtitle, and a "Read Guide" pill button.
- *  - Tapping navigates to the plant's full detail page in the Library.
- *  - Shows a skeleton card while the feed is loading for the first time.
- *  - Hides entirely if the feed has loaded but plantOfTheDay is null.
- *  - Works offline — plantOfTheDay is persisted by useFeedStore.
- *
- * Data sources (no props needed):
- *   useFeedStore → plantOfTheDay, isLoadingFeed
- *   useRouter    → navigation to /(tabs)/library/[id]
- */
-
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import {
-  Image,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  selectIsLoadingFeed,
-  selectPlantOfTheDay,
-  useFeedStore,
-} from "../../store/useFeedStore";
+import { LinearGradient } from "expo-linear-gradient"; 
+import { router } from "expo-router";
+import { useColorScheme } from "nativewind"; // 🌟 Added
+import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { selectIsLoadingFeed, selectPlantOfTheDay, useFeedStore } from "../../store/useFeedStore";
 import { SkeletonHeroCard } from "./HomeSkeletons";
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const HIGH_RES_IMAGE = "https://images.pexels.com/photos/9942132/pexels-photo-9942132.jpeg";
 
 export function PlantOfTheDay() {
-  const router = useRouter();
-  const [imageError, setImageError] = useState(false);
-
-  // ── Store subscriptions ──────────────────────────────────────────────────
   const plantOfTheDay = useFeedStore(selectPlantOfTheDay);
   const isLoadingFeed = useFeedStore(selectIsLoadingFeed);
 
-  // ── Loading state: show skeleton ─────────────────────────────────────────
+  const { colorScheme } = useColorScheme(); // 🌟 Added
+  const isDark = colorScheme === "dark";
+
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform:[{ scale: scale.value }],
+  }));
+
   if (plantOfTheDay === null && isLoadingFeed) {
     return (
-      <View className="px-6 mb-6">
-        <Text className="font-semibold text-[#243b27] tracking-tight text-sm mb-3">
+      <View className="px-6 mb-8">
+        <Text
+          className="text-[#22451C] dark:text-[#EAF3D5] mb-4"
+          style={{ fontSize: 22, fontFamily: "serif", fontStyle: "italic", fontWeight: "500", letterSpacing: 0.4 }}
+        >
           Plant of the Day
         </Text>
         <SkeletonHeroCard />
@@ -58,70 +37,91 @@ export function PlantOfTheDay() {
     );
   }
 
-  // ── Empty state: hide section entirely ───────────────────────────────────
   if (plantOfTheDay === null) return null;
 
-  // ── Handler ───────────────────────────────────────────────────────────────
   const handlePress = () => {
     router.push(`/(tabs)/library/${plantOfTheDay.id}`);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View className="px-6 mb-6">
-      {/* Section title */}
-      <View className="flex-row justify-between items-end mb-3">
-        <Text className="font-semibold text-[#243b27] tracking-tight text-sm">
+    <View className="px-6 mb-8">
+      <View className="flex-row justify-between items-end mb-4">
+        <Text
+          className="text-[#22451C] dark:text-[#EAF3D5]"
+          style={{ fontSize: 22, fontFamily: "serif", fontStyle: "italic", fontWeight: "500", letterSpacing: 0.4 }}
+        >
           Plant of the Day
         </Text>
       </View>
 
-      {/* Hero card */}
-      <TouchableOpacity
-        className="w-full h-[220px] rounded-[32px] overflow-hidden shadow-sm"
-        onPress={handlePress}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel={`Learn about ${plantOfTheDay.name}`}
-      >
-        {/* Plant image */}
-        <Image
-          source={
-            !imageError && plantOfTheDay.heroImageUrl
-              ? { uri: plantOfTheDay.heroImageUrl }
-              : require("../../../assets/images/plant-placeholder.jpg")
+      <AnimatedTouchable
+        style={[
+          animatedStyle,
+          {
+            shadowColor: isDark ? "#000" : "#22451C", // 🌟 Adapts shadow to theme
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: isDark ? 0.4 : 0.12,
+            shadowRadius: 20,
+            elevation: 8,
+            backgroundColor: isDark ? "#162916" : "#FAFEEF", // 🌟 Adapts background to theme
           }
-          className="w-full h-full"
+        ]}
+        className="w-full h-[280px] rounded-[36px] overflow-hidden border border-transparent dark:border-white/10"
+        onPress={handlePress}
+        activeOpacity={0.9}
+        onPressIn={() => (scale.value = withSpring(0.96))}
+        onPressOut={() => (scale.value = withSpring(1))}
+      >
+        <Image
+          source={{ uri: HIGH_RES_IMAGE }}
+          style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
-          onError={() => setImageError(true)}
         />
 
-        {/* Gradient overlay — dark bottom, fades to transparent top */}
-        <View className="absolute inset-0 bg-gradient-to-t from-[#243b27]/90 via-[#243b27]/30 to-transparent p-6 flex flex-col justify-end">
-          {/* Plant name */}
-          <Text className="text-white font-bold text-2xl leading-tight">
+        <LinearGradient
+          colors={[
+            'transparent', 
+            'rgba(15, 35, 15, 0.6)', 
+            'rgba(10, 25, 10, 0.95)'
+          ]}
+          locations={[0, 0.45, 1]}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingTop: 80, 
+            paddingBottom: 24,
+            paddingHorizontal: 24,
+          }}
+          className="flex flex-col justify-end"
+        >
+          <Text className="text-white font-bold text-[30px] leading-tight tracking-tight">
             {plantOfTheDay.name}
           </Text>
-
-          {/* Scientific name */}
-          <Text className="text-white/70 text-[11px] italic mt-0.5">
+          <Text className="text-[#EAF3D5] text-[13px] font-semibold mt-1 mb-2 tracking-[0.4px] italic">
             {plantOfTheDay.scientificName}
           </Text>
-
-          {/* Subtitle */}
-          <Text className="text-white/85 text-[11px] font-medium mt-1 mb-4 w-5/6">
+          <Text className="text-white/85 text-[13px] font-medium mt-1 mb-5 leading-[19px]">
             {plantOfTheDay.subtitle}
           </Text>
 
-          {/* CTA pill */}
-          <View className="flex-row items-center gap-1.5 bg-white/20 border border-white/30 rounded-full py-2 px-4 self-start">
-            <Text className="text-white text-[10px] font-semibold">
-              Read Guide
-            </Text>
-            <Feather name="arrow-right" size={11} color="white" />
+          <View 
+            className="flex-row items-center gap-2 rounded-full py-3 px-6 self-start"
+            style={{ 
+              backgroundColor: 'rgba(250, 254, 239, 1)', 
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 8,
+              elevation: 4, 
+            }}
+          >
+            <Text className="text-[#22451C] text-[13px] font-bold tracking-[0.2px]">Read Guide</Text>
+            <Feather name="arrow-right" size={15} color="#4D8035" />
           </View>
-        </View>
-      </TouchableOpacity>
+        </LinearGradient>
+      </AnimatedTouchable>
     </View>
   );
 }

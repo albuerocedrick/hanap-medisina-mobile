@@ -1,109 +1,56 @@
-import { Stack, useRouter, useSegments } from "expo-router";
-import { onAuthStateChanged } from "firebase/auth";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
-import "../global.css";
-import SyncPromptModal from "../src/components/global/SyncPromptModal";
-import SyncStatusBanner from "../src/components/global/SyncStatusBanner";
-import { useNetworkSync } from "../src/hooks/useNetworkSync";
-import { auth } from "../src/services/firebase";
-import { useAuthStore } from "../src/store/useAuthStore";
-import { useFeedStore } from "../src/store/useFeedStore";
-import { useNetworkStore } from "../src/store/useNetworkStore";
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import {
+  Quicksand_400Regular,
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+} from '@expo-google-fonts/quicksand';
+
+// Ensure your global CSS is imported for NativeWind to work
+import "../global.css"; 
+
+// Prevent the splash screen from auto-hiding before fonts are loaded
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { user, setUser } = useAuthStore();
+  // Load the organic plantic fonts
+  const [fontsLoaded, error] = useFonts({
+    'Quicksand_400Regular': Quicksand_400Regular,
+    'Quicksand_500Medium': Quicksand_500Medium,
+    'Quicksand_600SemiBold': Quicksand_600SemiBold,
+    'Quicksand_700Bold': Quicksand_700Bold,
+  });
 
-  // Phase 4: Network sync hook — listens for offline→online transitions
-  // and triggers the sync prompt modal when pending scans exist.
-  const { showSyncPrompt, dismissSyncPrompt } = useNetworkSync();
-
-  const [isInitializing, setIsInitializing] = useState(true);
-
-  const router = useRouter();
-  const segments = useSegments();
-
-  // Phase 4: Start the NetInfo listener so offline→online transitions are detected.
-  // Without this, the reconnect callback in useNetworkSync would never fire.
+  // Catch and throw any font loading errors
   useEffect(() => {
-    useNetworkStore.getState().startMonitoring();
-    return () => {
-      useNetworkStore.getState().stopMonitoring();
-    };
-  }, []);
+    if (error) throw error;
+  }, [error]);
 
+  // Hide the splash screen once fonts are fully ready
   useEffect(() => {
-    const subscriber = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      if (isInitializing) setIsInitializing(false);
-    });
-    return subscriber;
-  }, []);
-
-  useEffect(() => {
-    if (isInitializing) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-    const isVerifyScreen = segments[1] === "verify-email";
-
-    if (!user) {
-      if (!inAuthGroup) {
-        router.replace("/(auth)/login");
-      }
-    } else if (user) {
-      if (!user.emailVerified) {
-        if (!isVerifyScreen) {
-          router.replace("/(auth)/verify-email");
-        }
-      } else if (user.emailVerified) {
-        if (inAuthGroup) {
-          router.replace("/(tabs)");
-        }
-      }
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
     }
-  }, [user, segments, isInitializing]);
+  }, [fontsLoaded]);
 
-  // Phase 6: Fetch home feed once the authenticated user is confirmed.
-  // Runs in the background — the store hydrates from AsyncStorage first
-  // so the UI is never blocked waiting for this network call.
-  useEffect(() => {
-    if (user && user.emailVerified) {
-      useFeedStore.getState().fetchHomeFeed();
-    }
-  }, [user]);
-
-  if (isInitializing) {
-    return (
-      <View className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
+  // Do not render the app until fonts are loaded
+  if (!fontsLoaded) {
+    return null;
   }
 
-  // 3. YOUR ORIGINAL STACK + SYNC MODAL OVERLAY
   return (
-    <>
-      <Stack 
-        screenOptions={{ 
-          headerShown: false,
-          animation: "slide_from_right", // <-- Adds smooth sliding transition
-          animationDuration: 200,        // <-- Makes it snappy
-        }}
-      >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-
-      {/* Phase 4: Global sync modal — only shown when user is logged in */}
-      {user && user.emailVerified && (
-        <SyncPromptModal
-          visible={showSyncPrompt}
-          onDismiss={dismissSyncPrompt}
-        />
-      )}
-
-      {/* Phase 4: Background sync status banner — slides in during upload */}
-      {user && user.emailVerified && <SyncStatusBanner />}
-    </>
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Auth Group */}
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      
+      {/* Tabs Group */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      
+      {/* 404 Fallback */}
+      <Stack.Screen name="+not-found" options={{ presentation: 'modal' }} />
+    </Stack>
   );
 }

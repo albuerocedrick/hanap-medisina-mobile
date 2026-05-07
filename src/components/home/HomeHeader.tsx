@@ -1,136 +1,199 @@
-/**
- * src/components/home/HomeHeader.tsx
- *
- * Home Tab header row — extracted from app/(tabs)/index.tsx (lines 214–268).
- *
- * Left side : User avatar → taps to profile, time-of-day greeting, display name.
- * Right side : Network status pill → shows online/offline + pending sync count.
- *
- * Data sources (reads directly from stores, no props needed):
- *   useAuthStore  → user.displayName, user.photoURL, user.email
- *   useNetworkStore → isOnline
- *   useSyncStore  → syncQueue.length, isRunningSync
- */
-
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useMemo } from "react";
-import { Alert, Image, Text, TouchableOpacity, View } from "react-native";
-import { useAuthStore } from "../../store/useAuthStore";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
+import React, { useEffect } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { selectIsOnline, useNetworkStore } from "../../store/useNetworkStore";
 import { useSyncStore } from "../../store/useSyncStore";
 
-// ─────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour >= 0 && hour < 12) return "Good morning,";
-  if (hour >= 12 && hour < 17) return "Good afternoon,";
-  if (hour >= 17 && hour < 24) return "Good evening,";
-  return "Hello,";
+// ─── Reusable spring icon button ──────────────────────────────────────────────
+function IconButton({
+  onPress,
+  children,
+  isDark,
+  backgroundColor,
+  borderColor,
+}: {
+  onPress: () => void;
+  children: React.ReactNode;
+  isDark: boolean;
+  backgroundColor?: string;
+  borderColor?: string;
+}) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <AnimatedTouchable
+      style={[
+        animStyle,
+        {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: backgroundColor ?? (isDark ? "rgba(255,255,255,0.08)" : "#FAFEEF"),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: borderColor ?? (isDark ? "rgba(255,255,255,0.14)" : "#A2CFA3"),
+        },
+      ]}
+      onPressIn={() => {
+        scale.value = withSpring(0.86, { damping: 14, stiffness: 320 });
+        opacity.value = withTiming(0.75, { duration: 80 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 14, stiffness: 320 });
+        opacity.value = withTiming(1, { duration: 120 });
+      }}
+      onPress={onPress}
+      activeOpacity={1}
+    >
+      {children}
+    </AnimatedTouchable>
+  );
 }
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
-
+// ─── Main Header ──────────────────────────────────────────────────────────────
 export function HomeHeader() {
-  const router = useRouter();
-
-  // ── Store subscriptions ──────────────────────────────────────────────────
-  const { user } = useAuthStore();
   const isOnline = useNetworkStore(selectIsOnline);
   const pendingSyncCount = useSyncStore((s) => s.syncQueue.length);
   const isRunningSync = useSyncStore((s) => s.isRunningSync);
 
-  // ── Derived values ───────────────────────────────────────────────────────
-  const greeting = useMemo(() => getGreeting(), []);
-  const displayName = useMemo(
-    () => user?.displayName || user?.email?.split("@")[0] || "Herbalist",
-    [user],
-  );
-  const photoURL = user?.photoURL ?? null;
+  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const themeAnim = useSharedValue(isDark ? 1 : 0);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    themeAnim.value = withTiming(isDark ? 1 : 0, { duration: 300 });
+  }, [isDark, themeAnim]);
+
   const handleStatusPress = () => {
     const online = isOnline ? "Online" : "Offline";
-    const syncStatus = isRunningSync ? "Running" : "Idle";
+    const syncStatus = isRunningSync ? "Syncing…" : "Up to date";
     Alert.alert(
-      `Network Status: ${online}`,
-      `Sync: ${syncStatus}\nPending uploads: ${pendingSyncCount}`,
+      `Network: ${online}`,
+      `${syncStatus}\nPending uploads: ${pendingSyncCount}`,
     );
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  const themeIconWrapStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: `${themeAnim.value * 180}deg` },
+      { scale: 0.95 + themeAnim.value * 0.1 },
+    ],
+  }));
+
   return (
-    <View className="px-6 py-5">
-      <View className="flex-row justify-between items-center mb-6">
+    <Animated.View
+      entering={FadeIn.duration(600)}
+      style={{
+        paddingHorizontal: 22,
+        paddingTop: 12,
+        paddingBottom: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      {/* ── Left: Sync / Online Status ── */}
+      <View style={{ position: "relative" }}>
+        <IconButton onPress={handleStatusPress} isDark={isDark}>
+          <Feather
+            name={isOnline ? "cloud" : "cloud-off"}
+            size={18}
+            color={isOnline ? (isDark ? "rgba(226,232,240,0.85)" : "#0369A1") : (isDark ? "rgba(248,113,113,0.9)" : "#f87171")}
+          />
+        </IconButton>
 
-        {/* ── Left: Avatar + Greeting ── */}
-        <TouchableOpacity
-          className="flex-row items-center gap-3 flex-1 mr-3"
-          onPress={() => router.push("/(tabs)/profile")}
-          activeOpacity={0.7}
-        >
-          <View className="w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm">
-            {photoURL ? (
-              <Image
-                source={{ uri: photoURL }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="w-full h-full bg-[#dce7df] items-center justify-center">
-                <Feather name="user" size={24} color="#4a7553" />
-              </View>
-            )}
-          </View>
+        {/* Live-sync indicator dot */}
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: isOnline
+              ? isRunningSync
+                ? "#f59e0b"
+                : "#4ade80"
+              : "#f87171",
+            borderWidth: 2,
+            borderColor: isDark ? "#0B120B" : "#FAFEEF",
+          }}
+        />
 
-          <View className="flex-1">
-            <Text className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">
-              {greeting}
-            </Text>
+        {/* Pending badge */}
+        {pendingSyncCount > 0 && (
+          <View
+            style={{
+              position: "absolute",
+              top: -5,
+              right: -5,
+              minWidth: 17,
+              height: 17,
+              borderRadius: 9,
+              backgroundColor: "#ef4444",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 3,
+              borderWidth: 1.5,
+              borderColor: isDark ? "#0B120B" : "#FAFEEF",
+            }}
+          >
             <Text
-              className="text-[#243b27] font-semibold text-2xl leading-tight"
-              numberOfLines={1}
-              ellipsizeMode="tail"
+              style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}
             >
-              {displayName}
+              {pendingSyncCount > 9 ? "9+" : pendingSyncCount}
             </Text>
           </View>
-        </TouchableOpacity>
-
-        {/* ── Right: Network / Sync Status ── */}
-        <TouchableOpacity
-          className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"
-          activeOpacity={0.75}
-          onPress={handleStatusPress}
-          accessibilityLabel={`Network status: ${isOnline ? "Online" : "Offline"}`}
-          accessibilityRole="button"
-        >
-          <View className="items-center">
-            <Feather
-              name={isOnline ? "cloud" : "cloud-off"}
-              size={18}
-              color={isOnline ? "#10b981" : "#ef4444"}
-            />
-            <Text
-              className="text-[10px] mt-0.5"
-              style={{ color: isOnline ? "#10b981" : "#ef4444" }}
-            >
-              {isOnline ? "Online" : "Offline"}
-            </Text>
-          </View>
-
-          {/* Pending sync indicator dot */}
-          {pendingSyncCount > 0 && (
-            <View className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#d66a43] rounded-full border border-white" />
-          )}
-        </TouchableOpacity>
-
+        )}
       </View>
-    </View>
+
+      {/* ── Center: Brand Title ── */}
+      <View style={{ alignItems: "center", flex: 1, marginHorizontal: 10 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontSize: 34,
+            fontWeight: "500",
+            letterSpacing: 0.6,
+            color: isDark ? "#F8FAFC" : "#111827",
+            fontFamily: "serif",
+            fontStyle: "italic",
+          }}
+        >
+          Hanap
+        </Text>
+      </View>
+
+      {/* ── Right: Theme Toggle ── */}
+      <IconButton onPress={toggleColorScheme} isDark={isDark}>
+        <Animated.View style={themeIconWrapStyle}>
+          <Ionicons
+            name={isDark ? "leaf-outline" : "leaf"}
+            size={16}
+            color={isDark ? "rgba(226,232,240,0.9)" : "#16A34A"}
+          />
+        </Animated.View>
+      </IconButton>
+    </Animated.View>
   );
 }

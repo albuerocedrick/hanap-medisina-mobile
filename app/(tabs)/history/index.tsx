@@ -25,8 +25,11 @@ import {
   ScanHistoryItem,
 } from "@/src/services/firebaseHistory";
 import { useAuthStore } from "@/src/store/useAuthStore";
-import { useNetworkStore } from "@/src/store/useNetworkStore"; // <-- IMPORT YOUR GLOBAL STORE
+import { useNetworkStore } from "@/src/store/useNetworkStore"; 
 import { useSyncStore } from "@/src/store/useSyncStore";
+
+// 🌟 IMPORT PAGE TRANSITION
+import { PageTransition } from "@/src/components/ui/PageTransition";
 
 import { HistoryCard } from "@/src/components/history/history-card";
 import { HistoryEmptyState } from "@/src/components/history/history-empty-state";
@@ -41,7 +44,6 @@ const PAGE_SIZE = 10;
 
 export default function HistoryScreen() {
   const router = useRouter();
-  // Read incoming params (e.g. from Home navigation) to auto-open a scan
   const params = useLocalSearchParams();
   const incomingScanId = params?.scanId as string | undefined;
   const incomingOpenAt = params?.openAt as string | undefined;
@@ -49,32 +51,25 @@ export default function HistoryScreen() {
   const { syncQueue } = useSyncStore();
   const insets = useSafeAreaInsets();
 
-  // <-- USE YOUR GLOBAL NETWORK STORE HERE -->
-  // Change `isOnline` to whatever property name you use in useNetworkStore (e.g., isConnected)
   const isOnline = useNetworkStore((state: any) => state.isOnline);
   const isOffline = !isOnline;
 
-  // Data State
   const [cloudItems, setCloudItems] = useState<ScanHistoryItem[]>([]);
   const [cloudTotalCount, setCloudTotalCount] = useState<number>(0);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
 
-  // Pagination State
   const [lastDoc, setLastDoc] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  // Loading & Error State
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortFilter, setSortFilter] = useState<SortFilter>("newest");
 
-  // ── Fetch Initial Page ────────────────────────────────────────────────────────
   const fetchInitialScans = useCallback(
     async (isRefresh = false) => {
       if (!user?.uid) {
@@ -84,7 +79,6 @@ export default function HistoryScreen() {
         return;
       }
 
-      // Skip Firebase fetching if we are offline
       if (isOffline) {
         setLoadingInitial(false);
         setRefreshing(false);
@@ -118,7 +112,6 @@ export default function HistoryScreen() {
     [user?.uid, sortFilter, isOffline],
   );
 
-  // ── Fetch Next Page (Infinite Scroll) ───────────────────────────────────────
   const fetchNextPage = useCallback(async () => {
     if (!user?.uid || !hasMore || isFetchingMore || loadingInitial || isOffline)
       return;
@@ -158,15 +151,12 @@ export default function HistoryScreen() {
     return () => task.cancel();
   }, [fetchInitialScans]);
 
-  // Open modal automatically if a scanId was passed in route params
   useEffect(() => {
-    // Depend on both scanId and openAt nonce so repeated navigations open modal
     if (incomingScanId) {
       setSelectedScanId(incomingScanId);
     }
   }, [incomingScanId, incomingOpenAt]);
 
-  // ── Build & Merge Data ──────────────────────────────────────────────────────
   const mergedData = useMemo(() => {
     const localItems: ScanHistoryItem[] = (syncQueue ?? []).map(
       (scan: any) => ({
@@ -191,7 +181,6 @@ export default function HistoryScreen() {
   }, [cloudItems, syncQueue, sortFilter]);
 
   const displayData = useMemo(() => {
-    // If offline, force ONLY pending local items to show
     if (isOffline) {
       return mergedData.filter((item) => item.status === "pending");
     }
@@ -204,20 +193,18 @@ export default function HistoryScreen() {
     (item) => item.status === "pending",
   ).length;
 
-  // If offline, the "total" is just the pending local items.
   const totalCount = isOffline ? pendingCount : cloudTotalCount + pendingCount;
 
-  // ── Card Press Handler ──────────────────────────────────────────────────────
   const handleCardPress = useCallback((item: ScanHistoryItem) => {
     setSelectedScanId(item.id);
   }, []);
 
-  // ── Layout Calculations ─────────────────────────────────────────────────────
   const pillHeight = 78;
   const bottomPadding = Math.max(insets.bottom, 24) + pillHeight + 20;
 
   return (
-    <View className="flex-1 bg-[#f8fafc]" style={{ paddingTop: insets.top }}>
+    // 🌟 REPLACED <View> WITH <PageTransition>
+    <PageTransition className="flex-1 bg-[#f8fafc]" style={{ paddingTop: insets.top }}>
       <StatusBar
         barStyle="dark-content"
         backgroundColor="#f8fafc"
@@ -228,17 +215,16 @@ export default function HistoryScreen() {
         <HistoryHeader
           totalCount={totalCount}
           pendingCount={pendingCount}
-          statusFilter={isOffline ? "pending" : statusFilter} // Force pending visual if offline
+          statusFilter={isOffline ? "pending" : statusFilter}
           sortFilter={sortFilter}
           onStatusChange={setStatusFilter}
           onSortChange={() =>
             setSortFilter((prev) => (prev === "newest" ? "oldest" : "newest"))
           }
-          isOffline={isOffline} // Pass to Header to hide synced pills
+          isOffline={isOffline}
         />
       </View>
 
-      {/* EXPLICIT OFFLINE WARNING BANNER */}
       {isOffline && (
         <View className="bg-red-50 px-4 py-3 flex-row items-center justify-center border-b border-red-200">
           <Feather name="wifi-off" size={16} color="#dc2626" />
@@ -290,7 +276,7 @@ export default function HistoryScreen() {
               onRefresh={() => fetchInitialScans(true)}
               tintColor="#16a34a"
               colors={["#16a34a"]}
-              enabled={!isOffline} // Disable pull-to-refresh if offline
+              enabled={!isOffline}
             />
           }
           contentContainerStyle={[
@@ -308,6 +294,6 @@ export default function HistoryScreen() {
           setSelectedScanId(null);
         }}
       />
-    </View>
+    </PageTransition>
   );
 }

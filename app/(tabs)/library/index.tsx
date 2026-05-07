@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// 🌟 IMPORT PAGE TRANSITION
+import { PageTransition } from "../../../src/components/ui/PageTransition";
+
 // Components
 import { ScanDetailSheet } from "../../../src/components/history/scan-detail-sheet";
 import { FilterPills } from "../../../src/components/library/filter-pills";
@@ -26,19 +29,16 @@ import {
 } from "../../../src/store/useNetworkStore";
 
 export default function LibraryFeed() {
-  // ─── Route Params ────────────────────────────────────────────────────────
   const params = useLocalSearchParams();
   const scanIdFromParams = params?.scanId as string | undefined;
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
 
-  // Auto-open modal if scanId is passed from home screen
   useEffect(() => {
     if (scanIdFromParams) {
       setSelectedScanId(scanIdFromParams);
     }
   }, [scanIdFromParams]);
 
-  // ─── Global State Subscriptions ──────────────────────────────────────────
   const isOnline = useNetworkStore(selectIsOnline);
 
   const plants = useLibraryStore((s) => s.plants);
@@ -49,7 +49,6 @@ export default function LibraryFeed() {
   const isLoadingPlants = useLibraryStore((s) => s.isLoadingPlants);
   const plantsError = useLibraryStore((s) => s.plantsError);
 
-  // Actions
   const fetchPlants = useLibraryStore((s) => s.fetchPlants);
   const fetchPlantsByActiveCategory = useLibraryStore(
     (s) => s.fetchPlantsByActiveCategory,
@@ -59,7 +58,6 @@ export default function LibraryFeed() {
 
   const displayedPlants = getDisplayedPlants();
 
-  // ─── Lifecycles & Handlers ───────────────────────────────────────────────
   useEffect(() => {
     if (isOnline && plants.length === 0) {
       fetchPlantsByActiveCategory();
@@ -76,8 +74,6 @@ export default function LibraryFeed() {
     clearErrors();
     fetchPlantsByActiveCategory();
   };
-
-  // ─── Render Sub-components ───────────────────────────────────────────────
 
   const renderEmptyState = () => {
     if (isLoadingPlants && displayedPlants.length === 0) {
@@ -113,9 +109,6 @@ export default function LibraryFeed() {
       );
     }
 
-    // Phase 6: plants are now persisted to AsyncStorage so offline users
-    // can still browse and search the full cached library.
-    // Only show this state if no plants were ever loaded (first install, never connected).
     if (!isOnline && plants.length === 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
@@ -175,7 +168,6 @@ export default function LibraryFeed() {
       <SearchBar />
       <FilterPills />
 
-      {/* Phase 6: Cached library is available offline — show a softer info banner */}
       {!isOnline && (
         <View className="mx-4 mt-2 mb-1 bg-blue-50 border border-blue-200 rounded-lg flex-row items-center p-3">
           <Ionicons name="archive-outline" size={18} color="#1d4ed8" />
@@ -196,52 +188,52 @@ export default function LibraryFeed() {
     </View>
   );
 
-  // ─── Main Render ─────────────────────────────────────────────────────────
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50">
-      {/* Updated Navigation Header with Avatar Button UI */}
-      <View className="px-6 py-4 bg-gray-50 flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            activeOpacity={0.7}
-            className="mr-3 bg-white overflow-hidden"
-          >
-            <Image
-              source={require("../../../assets/images/library-mariherb.png")}
-              style={{ width: 150, height: 150 }}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <Text className="text-2xl font-bold text-gray-900">Library</Text>
+    // 🌟 WRAPPED WITH <PageTransition>
+    <PageTransition className="flex-1 bg-gray-50">
+      <SafeAreaView edges={["top"]} className="flex-1">
+        <View className="px-6 py-4 bg-gray-50 flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="mr-3 bg-white overflow-hidden"
+            >
+              <Image
+                source={require("../../../assets/images/library-mariherb.png")}
+                style={{ width: 150, height: 150 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-gray-900">Library</Text>
+          </View>
+          <Ionicons name="library-outline" size={24} color="#16a34a" />
         </View>
-        <Ionicons name="library-outline" size={24} color="#16a34a" />
-      </View>
 
-      <FlatList
-        data={displayedPlants}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <PlantCard plant={item} />}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmptyState}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoadingPlants && displayedPlants.length > 0}
-            onRefresh={handleRefresh}
-            colors={["#16a34a"]}
-            tintColor="#16a34a"
-            enabled={isOnline}
-          />
-        }
-      />
+        <FlatList
+          data={displayedPlants}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PlantCard plant={item} />}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmptyState}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoadingPlants && displayedPlants.length > 0}
+              onRefresh={handleRefresh}
+              colors={["#16a34a"]}
+              tintColor="#16a34a"
+              enabled={isOnline}
+            />
+          }
+        />
 
-      {/* ── Scan Detail Modal ── */}
-      <ScanDetailSheet
-        visible={selectedScanId !== null}
-        scanId={selectedScanId}
-        onClose={() => setSelectedScanId(null)}
-      />
-    </SafeAreaView>
+        <ScanDetailSheet
+          visible={selectedScanId !== null}
+          scanId={selectedScanId}
+          onClose={() => setSelectedScanId(null)}
+        />
+      </SafeAreaView>
+    </PageTransition>
   );
 }

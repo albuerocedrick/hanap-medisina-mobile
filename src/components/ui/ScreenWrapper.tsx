@@ -23,7 +23,8 @@ export function ScreenWrapper({
 }: ScreenWrapperProps) {
   const content = (
     <View
-      className={`flex-1 bg-[#FAFEEF] ${padded ? "px-6 pt-6 pb-8" : ""}`}
+      // 🌟 Added dark:bg-[#0B120B]
+      className={`flex-1 bg-[#FAFEEF] dark:bg-[#0B120B] ${padded ? "px-6 pt-6 pb-8" : ""}`}
       {...props}
     >
       {children}
@@ -32,7 +33,8 @@ export function ScreenWrapper({
 
   const scrollable = scroll ? (
     <ScrollView
-      className="flex-1 bg-[#FAFEEF]"
+      // 🌟 Added dark:bg-[#0B120B]
+      className="flex-1 bg-[#FAFEEF] dark:bg-[#0B120B]"
       contentContainerStyle={{ flexGrow: 1 }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
@@ -44,7 +46,8 @@ export function ScreenWrapper({
   if (avoidKeyboard) {
     return (
       <KeyboardAvoidingView
-        className="flex-1 bg-[#FAFEEF]"
+        // 🌟 Added dark:bg-[#0B120B]
+        className="flex-1 bg-[#FAFEEF] dark:bg-[#0B120B]"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {scrollable}

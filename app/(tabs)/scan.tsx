@@ -498,26 +498,20 @@ export default function ScanScreen() {
             } catch (error) {
               console.error("Upload failed in ScanScreen:", error);
               // Upload failed — persist locally and queue for later retry.
-              const offlineDir = new FileSystem.Directory(
-                FileSystem.Paths.document,
-                "offline-scans",
-              );
-              if (!offlineDir.exists) offlineDir.create();
-              const permanentFile = new FileSystem.File(offlineDir, `${scanId}.jpg`);
-              new FileSystem.File(localUri).copy(permanentFile);
-              enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
+              const offlineDirUri = `${FileSystem.documentDirectory}offline-scans`;
+              await FileSystem.makeDirectoryAsync(offlineDirUri, { intermediates: true });
+              const permanentFileUri = `${offlineDirUri}/${scanId}.jpg`;
+              await FileSystem.copyAsync({ from: localUri, to: permanentFileUri });
+              enqueueScan(permanentFileUri, identifiedLabel, confidencePercent);
               setSaveStatus("Upload failed — saved offline");
             }
           } else {
             // ── Offline path: persist locally and queue for sync when back online.
-            const offlineDir = new FileSystem.Directory(
-              FileSystem.Paths.document,
-              "offline-scans",
-            );
-            if (!offlineDir.exists) offlineDir.create();
-            const permanentFile = new FileSystem.File(offlineDir, `${scanId}.jpg`);
-            new FileSystem.File(localUri).copy(permanentFile);
-            enqueueScan(permanentFile.uri, identifiedLabel, confidencePercent);
+            const offlineDirUri = `${FileSystem.documentDirectory}offline-scans`;
+            await FileSystem.makeDirectoryAsync(offlineDirUri, { intermediates: true });
+            const permanentFileUri = `${offlineDirUri}/${scanId}.jpg`;
+            await FileSystem.copyAsync({ from: localUri, to: permanentFileUri });
+            enqueueScan(permanentFileUri, identifiedLabel, confidencePercent);
             setSaveStatus("Saved offline — will sync later");
           }
         } finally {
