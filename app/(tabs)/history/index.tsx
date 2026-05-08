@@ -1,11 +1,12 @@
 /**
  * app/(tabs)/history/index.tsx
- * Unified Scan History — HanapMedisina (Light Mode Edition)
+ * Unified Scan History — HanapMedisina (Modern Theme Edition)
  */
 
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
+import { useColorScheme } from "nativewind";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -50,6 +51,9 @@ export default function HistoryScreen() {
   const { user } = useAuthStore();
   const { syncQueue } = useSyncStore();
   const insets = useSafeAreaInsets();
+  
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const isOnline = useNetworkStore((state: any) => state.isOnline);
   const isOffline = !isOnline;
@@ -200,18 +204,17 @@ export default function HistoryScreen() {
   }, []);
 
   const pillHeight = 78;
-  const bottomPadding = Math.max(insets.bottom, 24) + pillHeight + 20;
+  const bottomPadding = Math.max(insets.bottom, 24) + pillHeight + 100;
 
   return (
-    // 🌟 REPLACED <View> WITH <PageTransition>
-    <PageTransition className="flex-1 bg-[#f8fafc]" style={{ paddingTop: insets.top }}>
+    <PageTransition className="flex-1 bg-[#FAFEEF] dark:bg-[#0B120B]" style={{ paddingTop: insets.top }}>
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#f8fafc"
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
         translucent
       />
 
-      <View className="bg-[#f8fafc] z-10">
+      <View className="bg-[#FAFEEF] dark:bg-[#0B120B] z-10">
         <HistoryHeader
           totalCount={totalCount}
           pendingCount={pendingCount}
@@ -226,9 +229,13 @@ export default function HistoryScreen() {
       </View>
 
       {isOffline && (
-        <View className="bg-red-50 px-4 py-3 flex-row items-center justify-center border-b border-red-200">
-          <Feather name="wifi-off" size={16} color="#dc2626" />
-          <Text className="text-red-700 text-xs font-semibold ml-2">
+        <View style={{
+          backgroundColor: isDark ? "rgba(220, 38, 38, 0.15)" : "#fef2f2",
+          borderColor: isDark ? "rgba(220, 38, 38, 0.3)" : "#fecaca",
+          borderBottomWidth: 1,
+        }} className="px-4 py-3 flex-row items-center justify-center">
+          <Feather name="wifi-off" size={16} color={isDark ? "#fca5a5" : "#dc2626"} />
+          <Text style={{ color: isDark ? "#fca5a5" : "#b91c1c" }} className="text-xs font-semibold ml-2">
             No internet. Only displaying local unsynced scans.
           </Text>
         </View>
@@ -236,8 +243,8 @@ export default function HistoryScreen() {
 
       {loadingInitial ? (
         <View className="flex-1 items-center justify-center pb-20">
-          <ActivityIndicator size="large" color="#16a34a" />
-          <Text className="mt-4 text-sm font-medium text-slate-500">
+          <ActivityIndicator size="large" color={isDark ? "#A2CFA3" : "#16a34a"} />
+          <Text style={{ color: isDark ? "#94a3b8" : "#64748b" }} className="mt-4 text-sm font-medium">
             Loading history…
           </Text>
         </View>
@@ -256,16 +263,19 @@ export default function HistoryScreen() {
           ListFooterComponent={
             <View className="w-full pb-6">
               {error && !isOffline && (
-                <View className="mx-4 my-2 p-3 bg-red-50 rounded-xl border border-red-200 flex-row gap-3 items-center">
+                <View style={{
+                  backgroundColor: isDark ? "rgba(220, 38, 38, 0.1)" : "#fef2f2",
+                  borderColor: isDark ? "rgba(220, 38, 38, 0.2)" : "#fecaca"
+                }} className="mx-4 my-2 p-3 rounded-xl border flex-row gap-3 items-center">
                   <Feather name="alert-circle" size={18} color="#ef4444" />
-                  <Text className="flex-1 text-xs font-medium text-red-800">
+                  <Text style={{ color: isDark ? "#fca5a5" : "#991b1b" }} className="flex-1 text-xs font-medium">
                     {error}
                   </Text>
                 </View>
               )}
               {isFetchingMore && !isOffline && (
                 <View className="py-4 items-center justify-center">
-                  <ActivityIndicator size="small" color="#16a34a" />
+                  <ActivityIndicator size="small" color={isDark ? "#A2CFA3" : "#16a34a"} />
                 </View>
               )}
             </View>
@@ -274,8 +284,8 @@ export default function HistoryScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchInitialScans(true)}
-              tintColor="#16a34a"
-              colors={["#16a34a"]}
+              tintColor={isDark ? "#A2CFA3" : "#16a34a"}
+              colors={[isDark ? "#A2CFA3" : "#16a34a"]}
               enabled={!isOffline}
             />
           }

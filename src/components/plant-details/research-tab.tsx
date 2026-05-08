@@ -13,6 +13,9 @@ import React from "react";
 import { ScrollView, Text, View } from "react-native";
 import { ResearchItem } from "../../services/firebaseLibrary";
 
+import { useColorScheme } from "nativewind";
+import { StyleSheet } from "react-native";
+
 // ─────────────────────────────────────────────
 // PROPS
 // ─────────────────────────────────────────────
@@ -31,6 +34,9 @@ interface ResearchCardProps {
 }
 
 function ResearchCard({ item, index }: ResearchCardProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   // Per-card guard: skip rendering if the entire item is unusable
   if (!item || typeof item !== "object") {
     console.warn(
@@ -46,35 +52,35 @@ function ResearchCard({ item, index }: ResearchCardProps) {
     typeof item.year === "number" && item.year > 0 ? item.year : null;
 
   return (
-    <View className="bg-white border border-gray-100 rounded-2xl overflow-hidden mb-4">
+    <View style={{ backgroundColor: "transparent", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(162,207,163,0.4)", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
       {/* Card header */}
-      <View className="bg-green-700 px-4 py-3 flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <View className="bg-white/20 rounded-lg p-1 mr-2">
-            <Ionicons name="document-text-outline" size={14} color="#ffffff" />
+      <View style={{ backgroundColor: isDark ? "rgba(162,207,163,0.08)" : "rgba(162,207,163,0.15)", paddingHorizontal: 16, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.2)" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)", borderRadius: 8, padding: 6, marginRight: 8 }}>
+            <Ionicons name="document-text-outline" size={14} color={isDark ? "#A2CFA3" : "#22451C"} />
           </View>
           <Text
-            className="text-white font-semibold text-sm flex-1"
+            style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "rgba(248,250,252,0.9)" : "#22451C", fontSize: 13, flex: 1, lineHeight: 18 }}
             numberOfLines={2}
           >
             {title}
           </Text>
         </View>
         {year !== null && (
-          <View className="bg-white/20 rounded-lg px-2 py-0.5 ml-2 flex-shrink-0">
-            <Text className="text-white text-xs font-medium">{year}</Text>
+          <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(34,69,28,0.08)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8 }}>
+            <Text style={{ fontFamily: "Quicksand_600SemiBold", color: isDark ? "#A2CFA3" : "#22451C", fontSize: 11 }}>{year}</Text>
           </View>
         )}
       </View>
 
       {/* Summary */}
       {summary ? (
-        <View className="px-4 pt-3 pb-2">
-          <Text className="text-gray-700 text-sm leading-6">{summary}</Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.8)" : "#334155", fontSize: 13, lineHeight: 20 }}>{summary}</Text>
         </View>
       ) : (
-        <View className="px-4 pt-3 pb-2">
-          <Text className="text-gray-400 text-sm italic">
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.4)", fontSize: 13, fontStyle: "italic" }}>
             No summary available.
           </Text>
         </View>
@@ -82,15 +88,15 @@ function ResearchCard({ item, index }: ResearchCardProps) {
 
       {/* Reference */}
       {reference && (
-        <View className="flex-row items-center px-4 pb-3 pt-1">
+        <View style={{ flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 16, paddingBottom: 12, paddingTop: 4 }}>
           <Ionicons
             name="library-outline"
             size={13}
-            color="#6B7280"
-            style={{ marginRight: 6 }}
+            color={isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)"}
+            style={{ marginRight: 6, marginTop: 1 }}
           />
           <Text
-            className="text-gray-500 text-xs italic flex-1"
+            style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontSize: 11, fontStyle: "italic", flex: 1 }}
             numberOfLines={2}
           >
             {reference}
@@ -106,6 +112,9 @@ function ResearchCard({ item, index }: ResearchCardProps) {
 // ─────────────────────────────────────────────
 
 export function ResearchTab({ research }: ResearchTabProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   // ── Guard ─────────────────────────────────────────────────────────────────
   const safeResearch = Array.isArray(research)
     ? research.filter((item) => item !== null && item !== undefined)
@@ -113,14 +122,14 @@ export function ResearchTab({ research }: ResearchTabProps) {
 
   if (safeResearch.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center py-20 px-8">
-        <View className="bg-gray-100 rounded-full p-4 mb-4">
-          <Ionicons name="flask-outline" size={32} color="#9CA3AF" />
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, paddingHorizontal: 32 }}>
+        <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(34,69,28,0.03)", borderRadius: 32, padding: 16, marginBottom: 16 }}>
+          <Ionicons name="flask-outline" size={32} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.3)"} />
         </View>
-        <Text className="text-gray-600 font-medium text-base text-center">
+        <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "rgba(248,250,252,0.7)" : "#22451C", fontSize: 16, textAlign: "center", marginBottom: 8 }}>
           No Research Available
         </Text>
-        <Text className="text-gray-400 text-sm text-center mt-2 leading-5">
+        <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.6)", fontSize: 13, textAlign: "center", lineHeight: 20 }}>
           Supporting studies for this plant have not been added yet.
         </Text>
       </View>
@@ -129,13 +138,13 @@ export function ResearchTab({ research }: ResearchTabProps) {
 
   return (
     <ScrollView
-      className="flex-1"
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Count header */}
-      <View className="flex-row items-center mb-4">
-        <Text className="text-gray-500 text-xs font-medium">
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, paddingLeft: 4 }}>
+        <Text style={{ fontFamily: "Quicksand_600SemiBold", color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
           {safeResearch.length}{" "}
           {safeResearch.length === 1 ? "study" : "studies"} found
         </Text>
@@ -146,14 +155,14 @@ export function ResearchTab({ research }: ResearchTabProps) {
       ))}
 
       {/* Footer note */}
-      <View className="flex-row items-start mt-2 px-1">
+      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, paddingHorizontal: 4 }}>
         <Ionicons
           name="information-circle-outline"
           size={14}
-          color="#9CA3AF"
-          style={{ marginTop: 1, marginRight: 6 }}
+          color={isDark ? "rgba(248,250,252,0.3)" : "rgba(34,69,28,0.4)"}
+          style={{ marginRight: 6 }}
         />
-        <Text className="text-gray-400 text-xs leading-4 flex-1">
+        <Text style={{ flex: 1, fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)", fontSize: 11, lineHeight: 16 }}>
           Research summaries are for informational purposes only. Consult a
           qualified healthcare professional before use.
         </Text>

@@ -1,11 +1,12 @@
 /**
  * app/(tabs)/profile.tsx
- * User Profile Screen — HanapMedisina Phase 5.3
+ * User Profile Screen — HanapMedisina (Modern Theme Edition)
  */
 
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StatusBar, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,14 +14,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // 🌟 IMPORT PAGE TRANSITION
 import { PageTransition } from "@/src/components/ui/PageTransition";
 
-import { getTotalScansCount } from "@/src/services/firebaseHistory";
 import apiClient from "@/src/api/client";
-import { auth } from "@/src/services/firebase";
-import { useAuthStore } from "@/src/store/useAuthStore";
-import { useSyncStore } from "@/src/store/useSyncStore";
 import { ProfileAvatar } from "@/src/components/profile/profile-avatar";
 import { ProfileMenuItem } from "@/src/components/profile/profile-menu-item";
 import { ProfileStats } from "@/src/components/profile/profile-stats";
+import { auth } from "@/src/services/firebase";
+import { getTotalScansCount } from "@/src/services/firebaseHistory";
+import { useAuthStore } from "@/src/store/useAuthStore";
+import { useSyncStore } from "@/src/store/useSyncStore";
 
 function formatMemberSince(creationTime: string | undefined): string {
   if (!creationTime) return "Unknown";
@@ -33,6 +34,9 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, setUser, logout } = useAuthStore();
   const pendingCount = useSyncStore((s) => s.syncQueue.length);
+
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const [totalScans, setTotalScans] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -126,13 +130,35 @@ export default function ProfileScreen() {
   }, [logout]);
 
   return (
-    // 🌟 REPLACED <View> WITH <PageTransition>
-    <PageTransition className="flex-1 bg-[#f8fafc]" style={{ paddingTop: insets.top }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" translucent />
+    <PageTransition className="flex-1 bg-[#FAFEEF] dark:bg-[#0B120B]" style={{ paddingTop: insets.top }}>
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
 
       <View className="px-6 py-5">
-        <Text className="text-3xl font-extrabold text-slate-800 tracking-tight">Profile</Text>
-        <Text className="text-slate-400 text-sm mt-0.5">Your account & preferences</Text>
+        <Text
+          style={{
+            fontSize: 28,
+            fontFamily: "serif",
+            fontStyle: "italic",
+            fontWeight: "500",
+            letterSpacing: 0.3,
+            color: isDark ? "#F8FAFC" : "#22451C",
+          }}
+        >
+          Profile
+        </Text>
+        <Text
+          style={{
+            color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)",
+            fontFamily: "Quicksand_500Medium"
+          }}
+          className="text-sm mt-1"
+        >
+          Your account & preferences
+        </Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 80 }}>
@@ -144,9 +170,19 @@ export default function ProfileScreen() {
             uploading={uploading}
             onEditPress={handlePickImage}
           />
-          <Text className="text-xl font-bold text-slate-800">{displayName}</Text>
+          <Text
+            style={{ color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "Quicksand_700Bold" }}
+            className="text-xl"
+          >
+            {displayName}
+          </Text>
           {user?.email && (
-            <Text className="text-sm text-slate-400 mt-0.5">{user.email}</Text>
+            <Text
+              style={{ color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_600SemiBold" }}
+              className="text-sm mt-0.5"
+            >
+              {user.email}
+            </Text>
           )}
         </View>
 
@@ -156,32 +192,40 @@ export default function ProfileScreen() {
           loading={statsLoading}
         />
 
-        <View className="mx-6 mb-4">
-          <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-1">Account</Text>
-          <View className="rounded-2xl overflow-hidden border border-slate-100 bg-white">
-            <ProfileMenuItem
-              icon="edit-2"
-              label="Edit Profile"
-              onPress={() => Alert.alert("Coming Soon", "Profile editing will be available in a future update.")}
-            />
-            <ProfileMenuItem
-              icon="bell"
-              label="Notifications"
-              onPress={() => Alert.alert("Coming Soon", "Notification settings will be available in a future update.")}
-            />
-          </View>
+        <View className="mx-6 mb-6 mt-4">
+          <Text
+            style={{ color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)", fontFamily: "Quicksand_700Bold" }}
+            className="text-xs uppercase tracking-wider mb-3 ml-2"
+          >
+            Account
+          </Text>
+
+          <ProfileMenuItem
+            icon="edit-2"
+            label="Edit Profile"
+            onPress={() => Alert.alert("Coming Soon", "Profile editing will be available in a future update.")}
+          />
+          <ProfileMenuItem
+            icon="bell"
+            label="Notifications"
+            onPress={() => Alert.alert("Coming Soon", "Notification settings will be available in a future update.")}
+          />
         </View>
 
-        <View className="mx-6">
-          <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-1">Session</Text>
-          <View className="rounded-2xl overflow-hidden border border-red-100 bg-white">
-            <ProfileMenuItem
-              icon="log-out"
-              label="Log Out"
-              onPress={handleLogout}
-              destructive
-            />
-          </View>
+        <View className="mx-6 mt-2">
+          <Text
+            style={{ color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)", fontFamily: "Quicksand_700Bold" }}
+            className="text-xs uppercase tracking-wider mb-3 ml-2"
+          >
+            Session
+          </Text>
+
+          <ProfileMenuItem
+            icon="log-out"
+            label="Log Out"
+            onPress={handleLogout}
+            destructive
+          />
         </View>
 
       </ScrollView>

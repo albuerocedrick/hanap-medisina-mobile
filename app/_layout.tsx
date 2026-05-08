@@ -1,7 +1,10 @@
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../src/services/firebase';
+import { useAuthStore } from '../src/store/useAuthStore';
 import {
   Quicksand_400Regular,
   Quicksand_500Medium,
@@ -16,7 +19,6 @@ import "../global.css";
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // Load the organic plantic fonts
   const [fontsLoaded, error] = useFonts({
     'Quicksand_400Regular': Quicksand_400Regular,
     'Quicksand_500Medium': Quicksand_500Medium,
@@ -24,20 +26,49 @@ export default function RootLayout() {
     'Quicksand_700Bold': Quicksand_700Bold,
   });
 
+  const { user, setUser } = useAuthStore();
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const segments = useSegments();
+  const router = useRouter();
+
   // Catch and throw any font loading errors
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
-  // Hide the splash screen once fonts are fully ready
+  // Listen to Firebase auth state changes
   useEffect(() => {
-    if (fontsLoaded) {
+    const subscriber = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
+    });
+    return subscriber; 
+  }, [setUser]);
+
+  // Handle routing based on auth state
+  useEffect(() => {
+    if (!isAuthReady || !fontsLoaded) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      // If not logged in and not in the auth group, force them to login
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
+      // If logged in and inside the auth group, send them to tabs
+      router.replace('/(tabs)');
+    }
+  }, [user, isAuthReady, fontsLoaded, segments, router]);
+
+  // Hide the splash screen once fonts and auth are fully ready
+  useEffect(() => {
+    if (fontsLoaded && isAuthReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, isAuthReady]);
 
-  // Do not render the app until fonts are loaded
-  if (!fontsLoaded) {
+  // Do not render the app until fonts and auth state are loaded
+  if (!fontsLoaded || !isAuthReady) {
     return null;
   }
 

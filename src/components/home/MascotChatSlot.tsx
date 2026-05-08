@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, ImageResolvedAssetSource, Pressable, Text, View } from "react-native";
 import { useColorScheme } from "nativewind";
-import Animated, { 
-  FadeIn, 
-  FadeOut, 
-  LinearTransition 
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  Easing,
+  runOnJS,
+  cancelAnimation
 } from "react-native-reanimated";
 
 const IDLE_MESSAGES = [
@@ -22,28 +29,25 @@ const EXPRESSION_MESSAGES = [
   "Feeling calm and ready.",
 ];
 
-const SHEETS = {
-  idle: require("../../../assets/images/home-mascot/herbi-idle.png"),
-  goingSleep: require("../../../assets/images/home-mascot/herbi-going-sleep.png"),
-  sleeping: require("../../../assets/images/home-mascot/herbi-sleeping.png"),
+const MASCOT_CONFIG = {
+  idle: { source: require("../../../assets/images/home-mascot/herbi-idle.png"), cols: 8, rows: 8, frames: 64 },
+  goingSleep: { source: require("../../../assets/images/home-mascot/herbi-going-to-sleep.png"), cols: 8, rows: 8, frames: 64 },
+  sleeping: { source: require("../../../assets/images/home-mascot/herbi-sleep-idle.png"), cols: 8, rows: 8, frames: 64 },
+  wakeup: { source: require("../../../assets/images/home-mascot/herbi-wakeup.png"), cols: 8, rows: 8, frames: 64 },
   expressions: [
-    require("../../../assets/images/home-mascot/herbi-happy.png"),
-    require("../../../assets/images/home-mascot/herbi-thinking.png"),
-    require("../../../assets/images/home-mascot/herbi-excited.png"),
-    require("../../../assets/images/home-mascot/herbi-winking.png"),
-    require("../../../assets/images/home-mascot/herbi-peaceful.png"),
+    { source: require("../../../assets/images/home-mascot/herbi-happy.png"), cols: 8, rows: 8, frames: 64 },
+    { source: require("../../../assets/images/home-mascot/herbi-thinking.png"), cols: 8, rows: 8, frames: 64 },
+    { source: require("../../../assets/images/home-mascot/herbi-excited.png"), cols: 8, rows: 8, frames: 64 },
+    { source: require("../../../assets/images/home-mascot/herbi-winking.png"), cols: 8, rows: 8, frames: 64 },
+    { source: require("../../../assets/images/home-mascot/herbi-peaceful.png"), cols: 8, rows: 8, frames: 64 },
   ],
-} as const;
+};
 
-// ─── Animation Config ───
-const COLUMNS = 8;
-const ROWS = 8;
-const TOTAL_FRAMES = 64; 
-const MASCOT_WIDTH = 100; // Fixed width for consistent horizontal layout
-const SPRITE_DURATION_MS = 4000;
-const FRAME_MS = Math.round(SPRITE_DURATION_MS / TOTAL_FRAMES);
-
-type MascotMode = "idle" | "expression" | "goingSleep" | "sleeping";
+// Option C: Scale by HEIGHT so Herbi is always the same height across all animations.
+// Width varies slightly per animation but height stays perfectly consistent.
+const TARGET_HEIGHT = 120; // Herbi is always this tall, every animation
+const SLOT_WIDTH = 140; // fixed pressable width — wide enough for the widest frame
+type MascotMode = "idle" | "expression" | "goingSleep" | "sleeping" | "wakeup";
 
 export function MascotChatSlot() {
   const { colorScheme } = useColorScheme();
@@ -53,9 +57,52 @@ export function MascotChatSlot() {
   const [exprIdx, setExprIdx] = useState(0);
   const [idleMsgIdx, setIdleMsgIdx] = useState(0);
   const [sleepDots, setSleepDots] = useState(0);
-  const [frame, setFrame] = useState(0);
   const lastInteractionRef = useRef(Date.now());
 
+  const frame = useSharedValue(0);
+  const transitionOpacity = useSharedValue(1);
+
+  const activeConfig = useMemo(() => {
+    if (mode === "expression") return MASCOT_CONFIG.expressions[exprIdx];
+    if (mode === "goingSleep") return MASCOT_CONFIG.goingSleep;
+    if (mode === "sleeping") return MASCOT_CONFIG.sleeping;
+    if (mode === "wakeup") return MASCOT_CONFIG.wakeup;
+    return MASCOT_CONFIG.idle;
+  }, [exprIdx, mode]);
+
+  // 🌟 Hardware-accelerated Sprite Animation 🌟
+  useEffect(() => {
+    cancelAnimation(frame);
+    frame.value = 0;
+
+    const durationMs = (activeConfig.frames / 16) * 1000;
+
+    if (mode === "idle" || mode === "sleeping") {
+      // Loop endlessly
+      frame.value = withRepeat(
+        withTiming(activeConfig.frames, { duration: durationMs, easing: Easing.linear }),
+        -1, // infinite
+        false
+      );
+    } else {
+      // Play once, then switch state
+      frame.value = withTiming(
+        activeConfig.frames,
+        { duration: durationMs, easing: Easing.linear },
+        (finished) => {
+          if (finished) {
+            if (mode === "expression" || mode === "wakeup") {
+              runOnJS(setMode)("idle");
+            } else if (mode === "goingSleep") {
+              runOnJS(setMode)("sleeping");
+            }
+          }
+        }
+      );
+    }
+  }, [mode, activeConfig]);
+
+  // Idle message rotation
   useEffect(() => {
     const idleInterval = setInterval(() => {
       if (mode === "idle") {
@@ -65,41 +112,7 @@ export function MascotChatSlot() {
     return () => clearInterval(idleInterval);
   }, [mode]);
 
-  useEffect(() => {
-    let frameInterval: ReturnType<typeof setInterval> | null = null;
-    let settleTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    if (mode === "expression" || mode === "goingSleep") {
-      setFrame(0);
-      let current = 0;
-
-      frameInterval = setInterval(() => {
-        current += 1;
-        if (current >= TOTAL_FRAMES) {
-          if (frameInterval) clearInterval(frameInterval);
-          setFrame(TOTAL_FRAMES - 1);
-
-          settleTimeout = setTimeout(() => {
-            if (mode === "expression") setMode("idle");
-            else setMode("sleeping");
-            setFrame(0);
-          }, 180);
-          return;
-        }
-        setFrame(current);
-      }, FRAME_MS);
-    } else {
-      frameInterval = setInterval(() => {
-        setFrame((f) => (f + 1) % TOTAL_FRAMES);
-      }, FRAME_MS);
-    }
-
-    return () => {
-      if (frameInterval) clearInterval(frameInterval);
-      if (settleTimeout) clearTimeout(settleTimeout);
-    };
-  }, [mode]);
-
+  // Sleeping dots animation
   useEffect(() => {
     const sleepDotsInterval = setInterval(() => {
       if (mode === "sleeping") setSleepDots((v) => (v + 1) % 4);
@@ -107,6 +120,7 @@ export function MascotChatSlot() {
     return () => clearInterval(sleepDotsInterval);
   }, [mode]);
 
+  // Inactivity timeout to go to sleep
   useEffect(() => {
     const inactivity = setInterval(() => {
       const inactiveFor = Date.now() - lastInteractionRef.current;
@@ -120,36 +134,54 @@ export function MascotChatSlot() {
   const message = useMemo(() => {
     if (mode === "expression") return EXPRESSION_MESSAGES[exprIdx];
     if (mode === "goingSleep") return "I'm getting sleepy...";
+    if (mode === "wakeup") return "Oh, hello there!";
     if (mode === "sleeping") return `zzzzz${".".repeat(sleepDots)}`;
     return IDLE_MESSAGES[idleMsgIdx];
   }, [exprIdx, idleMsgIdx, mode, sleepDots]);
 
   const handleMascotPress = () => {
     lastInteractionRef.current = Date.now();
+
+    if (mode === "sleeping" || mode === "goingSleep") {
+      setMode("wakeup");
+      return;
+    }
+
+    if (mode === "wakeup") return; // Let wakeup finish
+
     const next = Math.floor(Math.random() * EXPRESSION_MESSAGES.length);
     setExprIdx(next);
     setMode("expression");
   };
 
-  const activeSheet = useMemo(() => {
-    if (mode === "expression") return SHEETS.expressions[exprIdx];
-    if (mode === "goingSleep") return SHEETS.goingSleep;
-    if (mode === "sleeping") return SHEETS.sleeping;
-    return SHEETS.idle;
-  }, [exprIdx, mode]);
+  const resolved = Image.resolveAssetSource(activeConfig.source) as ImageResolvedAssetSource;
+  const sw = resolved?.width || 2048;
+  const sh = resolved?.height || 2048;
+  const fw = sw / activeConfig.cols;
+  const fh = sh / activeConfig.rows;
 
-  // 🌟 DYNAMIC DIMENSION CALCULATION 🌟
-  const resolved = Image.resolveAssetSource(activeSheet) as ImageResolvedAssetSource;
-  const sw = resolved?.width || 1024;
-  const sh = resolved?.height || 1024;
-  
-  const fw = sw / COLUMNS;
-  const fh = sh / ROWS;
-  const scale = MASCOT_WIDTH / fw;
+  // Scale by HEIGHT — Herbi is always TARGET_HEIGHT px tall regardless of which sheet.
+  // MAX_SCALE caps short-frame sheets (sleep-idle fh=223) from scaling up too large.
+  const MAX_SCALE = TARGET_HEIGHT / 285;
+  const scale = Math.min(TARGET_HEIGHT / fh, MAX_SCALE);
+  const displayWidth = fw * scale;
+  // Use actual scaled frame height (not TARGET_HEIGHT) as viewport height —
+  // prevents next-row bleed when scale is capped below TARGET_HEIGHT/fh
   const displayHeight = fh * scale;
 
-  const frameCol = frame % COLUMNS;
-  const frameRow = Math.floor(frame / COLUMNS);
+
+  const animatedSpriteStyle = useAnimatedStyle(() => {
+    const currentFrame = Math.floor(frame.value) % activeConfig.frames;
+    const frameCol = currentFrame % activeConfig.cols;
+    const frameRow = Math.floor(currentFrame / activeConfig.cols);
+    return {
+      opacity: transitionOpacity.value,
+      transform: [
+        { translateX: -frameCol * fw * scale },
+        { translateY: -frameRow * fh * scale },
+      ]
+    };
+  });
 
   return (
     <View style={{ paddingHorizontal: 22, height: 164, marginBottom: 24 }}>
@@ -166,31 +198,27 @@ export function MascotChatSlot() {
       >
         Meet Herbi...
       </Text>
-      
+
       <View style={{ flex: 1, flexDirection: "row", alignItems: "flex-end" }}>
-        {/* Mascot container with dynamic height to prevent "cutout" */}
-        <Pressable 
+        <Pressable
           onPress={handleMascotPress}
-          style={{ width: MASCOT_WIDTH, alignItems: "center" }}
+          // Fixed slot width keeps layout stable; sprite is centered inside
+          style={{ width: SLOT_WIDTH, alignItems: "center", justifyContent: "flex-end" }}
         >
+          {/* Viewport: exact one-frame size — no bleed left/right or top/bottom */}
           <View
             style={{
-              width: MASCOT_WIDTH,
+              width: displayWidth,
               height: displayHeight,
               overflow: "hidden",
-              borderRadius: 0.5, // Forced clipping
             }}
           >
-            <Image
-              source={activeSheet}
-              style={{
-                width: sw * scale,
-                height: sh * scale,
-                transform: [
-                  { translateX: -(frameCol * fw) * scale },
-                  { translateY: -(frameRow * fh) * scale },
-                ],
-              }}
+            <Animated.Image
+              source={activeConfig.source}
+              style={[
+                { width: sw * scale, height: sh * scale },
+                animatedSpriteStyle,
+              ]}
               resizeMode="stretch"
             />
           </View>
@@ -201,7 +229,7 @@ export function MascotChatSlot() {
           style={{
             flex: 1,
             marginLeft: 12,
-            marginBottom: 4, // Align slightly above the mascot "ground"
+            marginBottom: 4,
             borderRadius: 18,
             paddingVertical: 12,
             paddingHorizontal: 14,

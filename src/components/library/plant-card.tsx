@@ -12,92 +12,89 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useColorScheme } from "nativewind";
+import React, { memo, useState } from "react";
 import {
   Image,
   ImageErrorEventData,
   NativeSyntheticEvent,
   Platform,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { PlantSummary } from "../../services/firebaseLibrary";
-import { useLibraryStore } from "../../store/useLibraryStore";
-import { selectIsOnline, useNetworkStore } from "../../store/useNetworkStore";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { PlantSummary } from "@/src/services/firebaseLibrary";
+import { useLibraryStore } from "@/src/store/useLibraryStore";
+import { selectIsOnline, useNetworkStore } from "@/src/store/useNetworkStore";
 
-// ─────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-/** Local placeholder shown when imageUrl is missing or fails to load. */
 const PLACEHOLDER_IMAGE = require("../../../assets/images/plant-placeholder.jpg");
-
-/** Maximum category chips shown before "+N more" truncation. */
 const MAX_VISIBLE_CATEGORIES = 2;
-
-// ─────────────────────────────────────────────
-// PROPS
-// ─────────────────────────────────────────────
 
 interface PlantCardProps {
   plant: PlantSummary;
-  /** Overrides the default navigation to library/[id]. Useful in comparison flow. */
   onPress?: (plant: PlantSummary) => void;
-  /** When true, hides the favorite heart icon. */
   hideFavoriteIndicator?: boolean;
 }
 
-// ─────────────────────────────────────────────
-// SUB-COMPONENTS
-// ─────────────────────────────────────────────
+const CategoryChip = memo(function CategoryChip({ label }: { label: string }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
-interface CategoryChipProps {
-  label: string;
-}
-
-function CategoryChip({ label }: CategoryChipProps) {
   if (!label?.trim()) return null;
   return (
-    <View className="bg-green-50 border border-green-200 rounded-full px-2 py-0.5 mr-1 mt-1">
-      <Text className="text-green-700 text-xs font-medium" numberOfLines={1}>
+    <View 
+      style={{
+        backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(162,207,163,0.15)",
+        borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.4)",
+        borderWidth: StyleSheet.hairlineWidth,
+        borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2, marginRight: 6, marginTop: 4
+      }}
+    >
+      <Text style={{ fontFamily: "Quicksand_600SemiBold", fontSize: 10, color: isDark ? "rgba(248,250,252,0.6)" : "#22451C" }} numberOfLines={1}>
         {label}
       </Text>
     </View>
   );
-}
+});
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
-
-export function PlantCard({
+export function PlantCardComponent({
   plant,
   onPress,
   hideFavoriteIndicator = false,
 }: PlantCardProps) {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   const isFavorite = useLibraryStore((s) => s.isFavorite(plant.id));
   const isOnline = useNetworkStore(selectIsOnline);
 
   const [imageError, setImageError] = useState<boolean>(false);
   const [imageLoading, setImageLoading] = useState<boolean>(true);
 
-  // A card is accessible offline only if it's a saved favorite
   const isOfflineAccessible = isFavorite;
   const isUnavailableOffline = !isOnline && !isOfflineAccessible;
 
-  // ── Guard: skip rendering a card with no ID ───────────────────────────────
   if (!plant?.id) {
     console.warn("[PlantCard] Received plant with no ID — skipping render.");
     return null;
   }
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-
   const handlePress = () => {
-    if (isUnavailableOffline) return; // Silently block — UI dimming signals this
-
+    if (isUnavailableOffline) return;
     try {
       if (onPress) {
         onPress(plant);
@@ -105,10 +102,7 @@ export function PlantCard({
         router.push(`/(tabs)/library/${plant.id}`);
       }
     } catch (err) {
-      console.error(
-        `[PlantCard] Navigation failed for plant "${plant.id}":`,
-        err,
-      );
+      console.error(`[PlantCard] Navigation failed for plant "${plant.id}":`, err);
     }
   };
 
@@ -121,103 +115,71 @@ export function PlantCard({
     setImageLoading(false);
   };
 
-  // ── Category chips ────────────────────────────────────────────────────────
-  const safeCategories = Array.isArray(plant.categories)
-    ? plant.categories
-    : [];
+  const safeCategories = Array.isArray(plant.categories) ? plant.categories : [];
   const visibleCategories = safeCategories.slice(0, MAX_VISIBLE_CATEGORIES);
   const overflowCount = safeCategories.length - MAX_VISIBLE_CATEGORIES;
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <TouchableOpacity
+    <AnimatedTouchable
+      onPressIn={() => { scale.value = withSpring(0.97, { damping: 15, stiffness: 300 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
       onPress={handlePress}
-      activeOpacity={isUnavailableOffline ? 1 : 0.7}
-      accessibilityRole="button"
-      accessibilityLabel={`${plant.name}, ${plant.scientificName}`}
-      accessibilityHint={
-        isUnavailableOffline
-          ? "Not available offline. Save as favorite for offline access."
-          : "Tap to view plant details"
-      }
-      accessibilityState={{ disabled: isUnavailableOffline }}
-      className="mx-4 mb-3"
+      activeOpacity={1}
+      style={[animStyle, { opacity: isUnavailableOffline ? 0.4 : 1, marginHorizontal: 24, marginBottom: 12 }]}
     >
       <View
-        className={`
-          flex-row bg-white rounded-2xl overflow-hidden border border-gray-100
-          ${isUnavailableOffline ? "opacity-40" : "opacity-100"}
-        `}
-        style={
-          Platform.OS === "ios"
-            ? {
-                shadowColor: "#000",
-                shadowOpacity: 0.07,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 2 },
-              }
-            : { elevation: 2 }
-        }
+        style={{
+          flexDirection: "row",
+          backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "transparent",
+          borderRadius: 24, overflow: "hidden",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(162,207,163,0.6)",
+        }}
       >
-        {/* ── Plant image ──────────────────────────────────────────────── */}
-        <View className="w-24 h-24 bg-green-50">
+        <View style={{ width: 100, height: 100, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.15)" }}>
           {imageLoading && !imageError && (
-            <View className="absolute inset-0 bg-green-50 items-center justify-center">
-              <Ionicons name="leaf-outline" size={28} color="#86efac" />
+            <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}>
+              <Ionicons name="leaf-outline" size={24} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.2)"} />
             </View>
           )}
           <Image
-            source={
-              !imageError && plant.imageUrl
-                ? { uri: plant.imageUrl }
-                : PLACEHOLDER_IMAGE
-            }
-            className="w-24 h-24"
+            source={!imageError && plant.imageUrl ? { uri: plant.imageUrl } : PLACEHOLDER_IMAGE}
+            style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
             onError={handleImageError}
             onLoad={handleImageLoad}
-            accessibilityLabel={`Image of ${plant.name}`}
           />
         </View>
 
-        {/* ── Text content ─────────────────────────────────────────────── */}
-        <View className="flex-1 px-3 py-3 justify-center">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 pr-2">
-              <Text
-                className="text-gray-900 font-semibold text-sm leading-5"
-                numberOfLines={1}
-              >
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 12, justifyContent: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={{ fontFamily: "Quicksand_700Bold", fontSize: 16, color: isDark ? "#F8FAFC" : "#22451C" }} numberOfLines={1}>
                 {plant.name ?? "Unknown Plant"}
               </Text>
-              <Text
-                className="text-gray-400 text-xs italic mt-0.5"
-                numberOfLines={1}
-              >
+              <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 13, color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", marginTop: 2 }} numberOfLines={1}>
                 {plant.scientificName ?? ""}
               </Text>
             </View>
 
-            {/* ── Favorite indicator ──────────────────────────────────── */}
             {!hideFavoriteIndicator && (
-              <View className="mt-0.5">
+              <View style={{ marginTop: 2 }}>
                 {isFavorite ? (
-                  <Ionicons name="heart" size={16} color="#16a34a" />
+                  <Ionicons name="heart" size={16} color={isDark ? "#fca5a5" : "#ef4444"} />
                 ) : (
-                  <Ionicons name="heart-outline" size={16} color="#D1D5DB" />
+                  <Ionicons name="heart-outline" size={16} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.2)"} />
                 )}
               </View>
             )}
           </View>
 
-          {/* ── Category chips ───────────────────────────────────────── */}
           {safeCategories.length > 0 && (
-            <View className="flex-row flex-wrap mt-1.5 items-center">
+            <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4, alignItems: "center" }}>
               {visibleCategories.map((cat) => (
                 <CategoryChip key={cat} label={cat} />
               ))}
               {overflowCount > 0 && (
-                <Text className="text-gray-400 text-xs mt-1">
+                <Text style={{ fontFamily: "Quicksand_500Medium", fontSize: 10, color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.4)", marginTop: 4 }}>
                   +{overflowCount} more
                 </Text>
               )}
@@ -225,20 +187,14 @@ export function PlantCard({
           )}
         </View>
 
-        {/* ── Offline lock badge ───────────────────────────────────────────── */}
         {isUnavailableOffline && (
-          <View className="absolute top-2 right-2">
-            <Ionicons name="cloud-offline-outline" size={14} color="#9CA3AF" />
-          </View>
-        )}
-
-        {/* ── Chevron ──────────────────────────────────────────────────────── */}
-        {!isUnavailableOffline && (
-          <View className="items-center justify-center pr-3 pl-1">
-            <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+          <View style={{ position: "absolute", top: 8, right: 8 }}>
+            <Ionicons name="cloud-offline-outline" size={14} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(34,69,28,0.4)"} />
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </AnimatedTouchable>
   );
 }
+
+export const PlantCard = memo(PlantCardComponent);

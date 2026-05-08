@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImageManipulator from "expo-image-manipulator";
+import { useColorScheme } from "nativewind";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -59,7 +60,7 @@ type SheetState = "hidden" | "loading" | "success" | "error";
 
 // ─── Corner bracket reticle ───────────────────────────────────────────────────
 const CornerMark = ({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) => {
-  const W = 24, T = 3, C = "rgba(255,255,255,0.8)";
+  const W = 24, T = StyleSheet.hairlineWidth * 3 || 1.5, C = "rgba(255,255,255,0.6)";
   const isTop  = pos === "tl" || pos === "tr";
   const isLeft = pos === "tl" || pos === "bl";
   return (
@@ -82,17 +83,20 @@ const CornerMark = ({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) => {
 
 // ─── Permission gate ──────────────────────────────────────────────────────────
 function PermissionGate({ onRequest }: { onRequest: () => void }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   return (
-    <View style={styles.permissionContainer}>
-      <View style={styles.permissionIcon}>
-        <Ionicons name="camera" size={32} color={tokens.surface} />
+    <View style={[styles.permissionContainer, { backgroundColor: isDark ? "#0B120B" : "#FAFEEF" }]}>
+      <View style={[styles.permissionIcon, { backgroundColor: isDark ? "rgba(162,207,163,0.15)" : "rgba(162,207,163,0.2)" }]}>
+        <Ionicons name="camera" size={32} color={isDark ? "#A2CFA3" : "#22451C"} />
       </View>
-      <Text style={styles.permissionTitle}>Camera Access</Text>
-      <Text style={styles.permissionBody}>
+      <Text style={[styles.permissionTitle, { color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "serif", fontStyle: "italic", fontWeight: "600" }]}>Camera Access</Text>
+      <Text style={[styles.permissionBody, { color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.7)", fontFamily: "Quicksand_500Medium" }]}>
         We need access to your camera to identify plants in real time.
       </Text>
-      <TouchableOpacity onPress={onRequest} activeOpacity={0.8} style={styles.permissionButton}>
-        <Text style={styles.permissionButtonText}>Enable Camera</Text>
+      <TouchableOpacity onPress={onRequest} activeOpacity={0.8} style={[styles.permissionButton, { backgroundColor: isDark ? "rgba(162,207,163,0.1)" : "rgba(162,207,163,0.2)", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(162,207,163,0.4)", shadowOpacity: 0 }]}>
+        <Text style={[styles.permissionButtonText, { color: isDark ? "#A2CFA3" : "#22451C", fontFamily: "Quicksand_700Bold" }]}>Enable Camera</Text>
       </TouchableOpacity>
     </View>
   );
@@ -102,6 +106,8 @@ function PermissionGate({ onRequest }: { onRequest: () => void }) {
 
 /** Skeleton shimmer while AI is running */
 function LoadingState() {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -117,10 +123,10 @@ function LoadingState() {
 
   return (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="small" color={tokens.green} style={{ marginBottom: 14 }} />
-      <Animated.View style={[styles.shimmerLine, styles.shimmerWide, { opacity }]} />
-      <Animated.View style={[styles.shimmerLine, styles.shimmerNarrow, { opacity }]} />
-      <Text style={styles.loadingHint}>Analyzing plant…</Text>
+      <ActivityIndicator size="small" color={isDark ? "#A2CFA3" : "#22451C"} style={{ marginBottom: 14 }} />
+      <Animated.View style={[styles.shimmerLine, styles.shimmerWide, { opacity, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }]} />
+      <Animated.View style={[styles.shimmerLine, styles.shimmerNarrow, { opacity, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }]} />
+      <Text style={[styles.loadingHint, { color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_500Medium" }]}>Analyzing plant…</Text>
     </View>
   );
 }
@@ -137,14 +143,18 @@ function SuccessState({
   saveStatus: string | null;
   onViewDetails: () => void;
 }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   const isHigh = confidence >= 70;
   const isMid  = confidence >= MIN_CONFIDENCE && confidence < 70;
-  const tierColor = isHigh ? tokens.green : isMid ? tokens.amber : tokens.red;
-  const tierBg    = isHigh ? tokens.greenTint : isMid ? tokens.amberTint : tokens.redTint;
+  
+  const tierColor = isHigh ? (isDark ? "#A2CFA3" : "#22451C") : isMid ? (isDark ? "#FBBF24" : "#D97706") : (isDark ? "#F87171" : "#DC2626");
+  const tierBorder = isHigh ? (isDark ? "rgba(162,207,163,0.3)" : "rgba(162,207,163,0.5)") : isMid ? (isDark ? "rgba(217,119,6,0.3)" : "#FDE68A") : (isDark ? "rgba(239,68,68,0.3)" : "#FECACA");
 
-  const syncDot  = saveStatus?.includes("cloud") ? tokens.green
+  const syncDot  = saveStatus?.includes("cloud") ? (isDark ? "#A2CFA3" : "#10b981")
                  : saveStatus?.includes("failed") ? "#f87171"
-                 : saveStatus?.includes("Saving") ? tokens.mutedLight
+                 : saveStatus?.includes("Saving") ? (isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.4)")
                  : "#fbbf24";
   const syncText = saveStatus?.includes("cloud")   ? "Synced to cloud"
                  : saveStatus?.includes("failed")   ? "Queued locally"
@@ -154,19 +164,16 @@ function SuccessState({
 
   return (
     <View style={styles.resultContainer}>
-      {/* Label overline */}
-      <Text style={styles.overline}>Identified Plant</Text>
+      <Text style={[styles.overline, { color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_700Bold" }]}>Identified Plant</Text>
 
-      {/* Plant name */}
-      <Text style={styles.plantName} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={[styles.plantName, { color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "serif", fontStyle: "italic", fontWeight: "600" }]} numberOfLines={1} adjustsFontSizeToFit>
         {label}
       </Text>
 
-      {/* Confidence + sync row */}
       <View style={styles.metaRow}>
-        <View style={[styles.confidencePill, { backgroundColor: tierBg }]}>
+        <View style={[styles.confidencePill, { backgroundColor: "transparent", borderWidth: StyleSheet.hairlineWidth, borderColor: tierBorder }]}>
           <View style={[styles.dot, { backgroundColor: tierColor }]} />
-          <Text style={[styles.confidenceText, { color: tierColor }]}>
+          <Text style={[styles.confidenceText, { color: tierColor, fontFamily: "Quicksand_700Bold" }]}>
             {confidence.toFixed(1)}% match
           </Text>
         </View>
@@ -174,23 +181,21 @@ function SuccessState({
         {syncText && (
           <View style={styles.syncRow}>
             <View style={[styles.dot, { backgroundColor: syncDot }]} />
-            <Text style={styles.syncText}>{syncText}</Text>
+            <Text style={[styles.syncText, { color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_600SemiBold" }]}>{syncText}</Text>
           </View>
         )}
       </View>
 
-      {/* Progress bar */}
-      <View style={styles.progressTrack}>
+      <View style={[styles.progressTrack, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)" }]}>
         <View style={[styles.progressFill, {
           width: `${Math.min(confidence, 100)}%` as any,
           backgroundColor: tierColor,
         }]} />
       </View>
 
-      {/* CTA */}
-      <TouchableOpacity onPress={onViewDetails} activeOpacity={0.85} style={styles.ctaButton}>
-        <Text style={styles.ctaText}>View Full Details</Text>
-        <Ionicons name="arrow-forward" size={16} color="#fff" />
+      <TouchableOpacity onPress={onViewDetails} activeOpacity={0.85} style={[styles.ctaButton, { backgroundColor: isDark ? "rgba(162,207,163,0.15)" : "rgba(34,69,28,0.85)", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "transparent", shadowOpacity: 0 }]}>
+        <Text style={[styles.ctaText, { color: isDark ? "#A2CFA3" : "#ffffff", fontFamily: "Quicksand_700Bold" }]}>View Full Details</Text>
+        <Ionicons name="arrow-forward" size={16} color={isDark ? "#A2CFA3" : "#ffffff"} />
       </TouchableOpacity>
     </View>
   );
@@ -198,19 +203,18 @@ function SuccessState({
 
 /** Rejection content */
 function ErrorState({ onRetry }: { onRetry: () => void }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   return (
-    <View style={styles.resultContainer}>
-      <View style={styles.errorIconWrap}>
-        <Ionicons name="leaf-outline" size={28} color={tokens.amber} />
-      </View>
-      <Text style={styles.errorTitle}>Plant Not Recognized</Text>
-      <Text style={styles.errorBody}>
+    <View style={[styles.resultContainer, { justifyContent: "flex-start", paddingTop: 16 }]}>
+      <Text style={[styles.errorTitle, { color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "serif", fontStyle: "italic", fontWeight: "600", marginTop: 12 }]}>Plant Not Recognized</Text>
+      <Text style={[styles.errorBody, { color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.7)", fontFamily: "Quicksand_500Medium" }]}>
         Try taking a clearer, closer photo with good lighting. Make sure the plant
         fills most of the frame.
       </Text>
-      <TouchableOpacity onPress={onRetry} activeOpacity={0.85} style={styles.retryButton}>
-        <Ionicons name="camera-outline" size={16} color={tokens.greenDark} style={{ marginRight: 6 }} />
-        <Text style={styles.retryText}>Try Again</Text>
+      <TouchableOpacity onPress={onRetry} activeOpacity={0.85} style={[styles.retryButton, { marginBottom: 32, backgroundColor: "transparent", borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.2)" }]}>
+        <Ionicons name="camera-outline" size={16} color={isDark ? "rgba(248,250,252,0.8)" : "#22451C"} style={{ marginRight: 6 }} />
+        <Text style={[styles.retryText, { color: isDark ? "rgba(248,250,252,0.8)" : "#22451C", fontFamily: "Quicksand_700Bold" }]}>Try Again</Text>
       </TouchableOpacity>
     </View>
   );
@@ -232,6 +236,8 @@ function ScanBottomSheet({
   onDismiss: () => void;
   onViewDetails: () => void;
 }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
@@ -294,20 +300,18 @@ function ScanBottomSheet({
       <Animated.View
         style={[
           styles.sheet,
-          { height: SHEET_HEIGHT, transform: [{ translateY }] },
+          { height: SHEET_HEIGHT, transform: [{ translateY }], backgroundColor: isDark ? "#0B120B" : "#FAFEEF", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(34,69,28,0.15)" },
         ]}
       >
         {/* Handle pill */}
         <View style={styles.handleRow}>
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(34,69,28,0.15)" }]} />
         </View>
 
         {/* Photo preview strip */}
         {photoUri && (
-          <View style={styles.imageWrap}>
+          <View style={[styles.imageWrap, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }]}>
             <Image source={{ uri: photoUri }} style={styles.previewImage} resizeMode="cover" />
-            {/* Fade overlay at bottom of image for content readability */}
-            <View style={styles.imageFade} />
           </View>
         )}
 
@@ -340,6 +344,8 @@ export default function ScanScreen() {
   const device = useCameraDevice("back");
   const camera = useRef<Camera>(null);
   const { model, labels } = useTFLite();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const { captureTrigger, setIsProcessing } = useCameraStore();
   const isOnline    = useNetworkStore((s) => s.isOnline);
@@ -375,7 +381,10 @@ export default function ScanScreen() {
     
     setIsProcessing(true); // Re-use the existing loading overlay
     try {
-      const allPlants = await getAllPlants();
+      const allPlants = await Promise.race([
+        getAllPlants(),
+        new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("Timeout fetching library data")), 10000))
+      ]);
       const matchedPlant = allPlants.find(
         (p) => p.name.toLowerCase() === result.label.toLowerCase()
       );
@@ -409,7 +418,11 @@ export default function ScanScreen() {
       setIsProcessing(true);
 
       // ── 1. Take photo & open sheet immediately in loading state ────────────
-      const photo = await camera.current.takePhoto({ flash: flashMode });
+      const photo = await Promise.race([
+        camera.current.takePhoto({ flash: flashMode }),
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Camera capture timeout")), 8000))
+      ]);
+      
       const localUri = photo.path.startsWith("file://") ? photo.path : `file://${photo.path}`;
       setPhotoUri(localUri);
       setSheetState("loading");
@@ -552,15 +565,15 @@ export default function ScanScreen() {
       {device.hasFlash && (
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.flashButton, { top: Platform.OS === "ios" ? 60 : 40 }]}
+          style={[styles.flashButton, { top: Platform.OS === "ios" ? 60 : 40, backgroundColor: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.2)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.2)" }]}
           onPress={() => setFlashMode(m => m === "off" ? "on" : m === "on" ? "auto" : "off")}
         >
           <Ionicons 
             name={flashMode === "off" ? "flash-off" : "flash"} 
             size={16} 
-            color={flashMode === "on" ? tokens.amber : tokens.surface} 
+            color={flashMode === "on" ? "#FBBF24" : "white"} 
           />
-          <Text style={styles.flashText}>
+          <Text style={[styles.flashText, { fontFamily: "Quicksand_600SemiBold", color: "white" }]}>
             {flashMode === "auto" ? "AUTO" : flashMode === "on" ? "ON" : "OFF"}
           </Text>
         </TouchableOpacity>
@@ -568,11 +581,11 @@ export default function ScanScreen() {
 
       {/* Network badge */}
       <View
-        style={[styles.networkBadge, { top: Platform.OS === "ios" ? 60 : 40 }]}
+        style={[styles.networkBadge, { top: Platform.OS === "ios" ? 60 : 40, backgroundColor: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.2)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.2)" }]}
         pointerEvents="none"
       >
-        <View style={[styles.dot, { backgroundColor: isOnline ? tokens.green : tokens.mutedLight }]} />
-        <Text style={styles.networkText}>{isOnline ? "Online" : "Offline"}</Text>
+        <View style={[styles.dot, { backgroundColor: isOnline ? "#A2CFA3" : "rgba(255,255,255,0.4)" }]} />
+        <Text style={[styles.networkText, { fontFamily: "Quicksand_600SemiBold", color: "white" }]}>{isOnline ? "Online" : "Offline"}</Text>
       </View>
 
       {/* Reticle */}

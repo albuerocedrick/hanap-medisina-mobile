@@ -1,5 +1,6 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -31,6 +32,9 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
   const { user } = useAuthStore();
   const { syncQueue, resetRetryCount, runSync, isRunningSync } = useSyncStore();
   const isOnline = useNetworkStore((s) => s.isOnline);
+  
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const [scan, setScan] = useState<ScanHistoryItem | null>(null);
   const [scanRetryCount, setScanRetryCount] = useState(0); // raw retryCount from queue
@@ -115,9 +119,9 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
   const displayConf = Number(confPct.toFixed(2));
   
   const getConfColor = (val: number) => {
-    if (val >= 80) return { bg: "#22c55e", text: "text-green-700", bar: "bg-green-50" };
-    if (val >= 50) return { bg: "#f59e0b", text: "text-amber-700", bar: "bg-amber-50" };
-    return { bg: "#ef4444", text: "text-red-700", bar: "bg-red-50" };
+    if (val >= 80) return { bg: "#22c55e", text: isDark ? "#4ade80" : "#15803d", bar: isDark ? "rgba(34, 197, 94, 0.2)" : "#f0fdf4" };
+    if (val >= 50) return { bg: "#f59e0b", text: isDark ? "#fbbf24" : "#b45309", bar: isDark ? "rgba(245, 158, 11, 0.2)" : "#fffbeb" };
+    return { bg: "#ef4444", text: isDark ? "#f87171" : "#b91c1c", bar: isDark ? "rgba(239, 68, 68, 0.2)" : "#fef2f2" };
   };
   const confStyles = getConfColor(displayConf);
 
@@ -130,59 +134,107 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
     >
       {/* Dimmed Backdrop (Closes on press) */}
       <Pressable 
-        style={{ flex: 1, backgroundColor: "rgba(15, 23, 42, 0.4)" }} 
+        style={{ flex: 1, backgroundColor: "rgba(11, 18, 11, 0.6)" }} 
         onPress={onClose} 
       />
 
       {/* Bottom Sheet Container */}
       <View 
-        style={{ height: "70%", paddingBottom: insets.bottom }}
-        className="bg-[#f8fafc] rounded-t-[32px] absolute bottom-0 left-0 right-0 shadow-xl overflow-hidden"
+        style={{ 
+          height: "70%", 
+          paddingBottom: insets.bottom,
+          backgroundColor: isDark ? "#0B120B" : "#FAFEEF",
+          borderTopWidth: 1,
+          borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.5)",
+        }}
+        className="rounded-t-[32px] absolute bottom-0 left-0 right-0 shadow-xl overflow-hidden"
       >
         {/* Drag Handle */}
-        <View className="w-12 h-1.5 bg-slate-200 rounded-full self-center mt-4 mb-2" />
+        <View 
+          style={{ backgroundColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.2)" }}
+          className="w-12 h-1.5 rounded-full self-center mt-4 mb-2" 
+        />
 
         {/* Header */}
         <View className="flex-row items-center justify-between px-6 py-2">
-          <Text className="text-sm font-bold text-slate-500 tracking-widest uppercase">
+          <Text 
+            style={{ 
+              color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)",
+              fontFamily: "Quicksand_700Bold",
+            }}
+            className="text-sm tracking-widest uppercase"
+          >
             Scan Details
           </Text>
           <TouchableOpacity 
             onPress={onClose}
-            className="w-8 h-8 items-center justify-center rounded-full bg-slate-100"
+            style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.3)" }}
+            className="w-8 h-8 items-center justify-center rounded-full"
           >
-            <Feather name="x" size={18} color="#0f172a" />
+            <Feather name="x" size={18} color={isDark ? "rgba(248,250,252,0.9)" : "#22451C"} />
           </TouchableOpacity>
         </View>
 
         {loading ? (
           <View className="flex-1 items-center justify-center pb-20">
-            <ActivityIndicator size="large" color="#16a34a" />
+            <ActivityIndicator size="large" color={isDark ? "#A2CFA3" : "#16a34a"} />
           </View>
         ) : error || !scan ? (
           <View className="flex-1 items-center justify-center px-6 pb-20">
-            <Feather name="alert-triangle" size={40} color="#94a3b8" />
-            <Text className="text-slate-900 text-lg font-bold mt-4 text-center">Scan Not Found</Text>
-            <Text className="text-slate-500 text-center mt-2">{error}</Text>
+            <Feather name="alert-triangle" size={40} color={isDark ? "rgba(248,250,252,0.3)" : "#A2CFA3"} />
+            <Text style={{ color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "Quicksand_700Bold" }} className="text-lg mt-4 text-center">Scan Not Found</Text>
+            <Text style={{ color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_500Medium" }} className="text-center mt-2">{error}</Text>
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
             
             {/* Title & Badge */}
             <View className="px-6 pt-2 pb-6">
-              <Text className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <Text 
+                style={{ 
+                  color: isDark ? "#F8FAFC" : "#22451C",
+                  fontFamily: "serif",
+                  fontStyle: "italic",
+                  fontWeight: "500" 
+                }}
+                className="text-3xl tracking-tight"
+              >
                 {scan.plantName}
               </Text>
               <View className="flex-row items-center mt-2">
                 {scan.status === "pending" ? (
-                  <View className="flex-row items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                  <View 
+                    style={{
+                      backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#fffbeb",
+                      borderColor: isDark ? "rgba(245, 158, 11, 0.3)" : "#fde68a",
+                      borderWidth: 1,
+                    }}
+                    className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  >
                     <View className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <Text className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">Offline Scan</Text>
+                    <Text 
+                      style={{ color: isDark ? "#fbbf24" : "#b45309", fontFamily: "Quicksand_700Bold" }}
+                      className="text-[10px] uppercase tracking-wider"
+                    >
+                      Offline Scan
+                    </Text>
                   </View>
                 ) : (
-                  <View className="flex-row items-center gap-1.5 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
-                    <Feather name="check" size={12} color="#15803d" />
-                    <Text className="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Synced to Cloud</Text>
+                  <View 
+                    style={{
+                      backgroundColor: isDark ? "rgba(22, 163, 74, 0.15)" : "#f0fdf4",
+                      borderColor: isDark ? "rgba(22, 163, 74, 0.3)" : "#bbf7d0",
+                      borderWidth: 1,
+                    }}
+                    className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  >
+                    <Feather name="check" size={12} color={isDark ? "#4ade80" : "#15803d"} />
+                    <Text 
+                      style={{ color: isDark ? "#4ade80" : "#15803d", fontFamily: "Quicksand_700Bold" }}
+                      className="text-[10px] uppercase tracking-wider"
+                    >
+                      Synced to Cloud
+                    </Text>
                   </View>
                 )}
               </View>
@@ -191,23 +243,39 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
             {/* Side-by-Side Images */}
             <View className="px-6 mb-6 flex-row justify-between gap-3">
               <View className="flex-1">
-                <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                <Text 
+                  style={{ color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_700Bold" }}
+                  className="text-[11px] uppercase tracking-wider mb-2"
+                >
                   Your Scan
                 </Text>
-                <View className="aspect-square bg-slate-200 rounded-2xl overflow-hidden border border-slate-200">
+                <View 
+                  style={{ borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.5)", borderWidth: 1 }}
+                  className="aspect-square bg-slate-200 rounded-2xl overflow-hidden"
+                >
                   <Image source={{ uri: scan.imageUri }} className="w-full h-full" resizeMode="cover" />
                 </View>
               </View>
 
               <View className="flex-1">
-                <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                <Text 
+                  style={{ color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_700Bold" }}
+                  className="text-[11px] uppercase tracking-wider mb-2"
+                >
                   Reference
                 </Text>
-                <View className="aspect-square bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 items-center justify-center">
+                <View 
+                  style={{ 
+                    borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.5)", 
+                    borderWidth: 1,
+                    backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.15)"
+                  }}
+                  className="aspect-square rounded-2xl overflow-hidden items-center justify-center"
+                >
                   {libraryMatch?.imageUrl ? (
                     <Image source={{ uri: libraryMatch.imageUrl }} className="w-full h-full" resizeMode="cover" />
                   ) : (
-                    <Ionicons name="leaf-outline" size={28} color="#94a3b8" />
+                    <Ionicons name="leaf-outline" size={28} color={isDark ? "rgba(248,250,252,0.3)" : "#A2CFA3"} />
                   )}
                 </View>
               </View>
@@ -215,33 +283,53 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
 
             {/* Details Card */}
             <View className="px-6 mb-6">
-              <View className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <View 
+                style={{
+                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#FAFEEF",
+                  borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.55)",
+                  borderWidth: 1,
+                }}
+                className="rounded-2xl p-4 shadow-sm"
+              >
                 <View className="mb-4">
                   <View className="flex-row justify-between items-end mb-2">
-                    <Text className="text-xs font-semibold text-slate-600">AI Confidence</Text>
-                    <Text className={`text-base font-bold ${confStyles.text}`}>{displayConf}%</Text>
+                    <Text 
+                      style={{ color: isDark ? "rgba(248,250,252,0.8)" : "rgba(34,69,28,0.8)", fontFamily: "Quicksand_600SemiBold" }}
+                      className="text-xs"
+                    >
+                      AI Confidence
+                    </Text>
+                    <Text style={{ color: confStyles.text, fontFamily: "Quicksand_700Bold" }} className="text-base">{displayConf}%</Text>
                   </View>
-                  <View className={`h-2 rounded-full ${confStyles.bar} overflow-hidden`}>
+                  <View style={{ backgroundColor: confStyles.bar }} className="h-2 rounded-full overflow-hidden">
                     <View className="h-full rounded-full" style={{ width: `${displayConf}%`, backgroundColor: confStyles.bg }} />
                   </View>
                 </View>
 
-                <View className="h-px bg-slate-100 mb-3" />
+                <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.3)" }} className="h-px mb-3" />
 
                 <View className="gap-3">
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-2">
-                      <Feather name="camera" size={14} color="#64748b" />
-                      <Text className="text-xs font-medium text-slate-600">Captured on</Text>
+                      <Feather name="camera" size={14} color={isDark ? "rgba(248,250,252,0.6)" : "#4D8035"} />
+                      <Text style={{ color: isDark ? "rgba(248,250,252,0.6)" : "#4D8035", fontFamily: "Quicksand_500Medium" }} className="text-xs">Captured on</Text>
                     </View>
-                    <Text className="text-xs font-semibold text-slate-900">{formatDate(scan.createdAt)}</Text>
+                    <Text style={{ color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "Quicksand_600SemiBold" }} className="text-xs">{formatDate(scan.createdAt)}</Text>
                   </View>
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-2">
-                      <Feather name="cloud" size={14} color="#64748b" />
-                      <Text className="text-xs font-medium text-slate-600">Cloud Sync</Text>
+                      <Feather name="cloud" size={14} color={isDark ? "rgba(248,250,252,0.6)" : "#4D8035"} />
+                      <Text style={{ color: isDark ? "rgba(248,250,252,0.6)" : "#4D8035", fontFamily: "Quicksand_500Medium" }} className="text-xs">Cloud Sync</Text>
                     </View>
-                    <Text className={`text-xs font-semibold ${scan.status === 'pending' ? 'text-amber-600' : 'text-slate-900'}`}>
+                    <Text 
+                      style={{ 
+                        color: scan.status === 'pending' 
+                          ? (isDark ? "#f59e0b" : "#d97706") 
+                          : (isDark ? "#F8FAFC" : "#22451C"), 
+                        fontFamily: "Quicksand_600SemiBold" 
+                      }} 
+                      className="text-xs"
+                    >
                       {scan.status === 'pending' ? 'Pending' : formatDate(scan.createdAt)}
                     </Text>
                   </View>
@@ -257,20 +345,26 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
                   activeOpacity={0.8}
                   disabled={!isOnline || isRunningSync}
                   onPress={handleRetryScan}
-                  className={`w-full flex-row items-center justify-center gap-2 py-3.5 rounded-xl border ${
-                    !isOnline
-                      ? "bg-slate-100 border-slate-200"
-                      : "bg-amber-500 border-amber-600 shadow-sm"
-                  }`}
+                  style={{
+                    backgroundColor: !isOnline 
+                      ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.3)")
+                      : "#f59e0b",
+                    borderColor: !isOnline 
+                      ? "transparent"
+                      : "#d97706",
+                    borderWidth: !isOnline ? 0 : 1,
+                  }}
+                  className="w-full flex-row items-center justify-center gap-2 py-3.5 rounded-xl shadow-sm"
                 >
                   {isRunningSync ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Feather name="refresh-cw" size={16} color={!isOnline ? "#94a3b8" : "white"} />
+                    <Feather name="refresh-cw" size={16} color={!isOnline ? (isDark ? "rgba(248,250,252,0.4)" : "#4D8035") : "white"} />
                   )}
-                  <Text className={`text-sm font-bold ${
-                    !isOnline ? "text-slate-400" : "text-white"
-                  }`}>
+                  <Text style={{ 
+                    fontFamily: "Quicksand_700Bold", 
+                    color: !isOnline ? (isDark ? "rgba(248,250,252,0.5)" : "#4D8035") : "white" 
+                  }} className="text-sm">
                     {!isOnline ? "No Connection to Sync" : isRunningSync ? "Syncing…" : "Retry Sync"}
                   </Text>
                 </TouchableOpacity>
@@ -284,17 +378,25 @@ export function ScanDetailSheet({ visible, scanId, onClose }: Props) {
                     onClose();
                     router.push(`/(tabs)/library/${libraryMatch.id}`);
                   }}
-                  className="w-full bg-[#16a34a] flex-row items-center justify-center gap-2 py-3.5 rounded-xl shadow-sm"
+                  style={{ backgroundColor: "#4D8035" }}
+                  className="w-full flex-row items-center justify-center gap-2 py-3.5 rounded-xl shadow-sm"
                 >
                   <Ionicons name="book-outline" size={18} color="white" />
-                  <Text className="text-white text-sm font-bold tracking-wide">
+                  <Text style={{ fontFamily: "Quicksand_700Bold" }} className="text-white text-sm tracking-wide">
                     View Full Plant Info
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <View className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex-row gap-3 items-center">
-                  <Feather name="info" size={16} color="#64748b" />
-                  <Text className="flex-1 text-xs text-slate-600">
+                <View 
+                  style={{
+                    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(162,207,163,0.15)",
+                    borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.4)",
+                    borderWidth: 1,
+                  }}
+                  className="rounded-xl p-3 flex-row gap-3 items-center"
+                >
+                  <Feather name="info" size={16} color={isDark ? "rgba(248,250,252,0.6)" : "#4D8035"} />
+                  <Text style={{ color: isDark ? "rgba(248,250,252,0.8)" : "rgba(34,69,28,0.8)", fontFamily: "Quicksand_500Medium" }} className="flex-1 text-xs">
                     Not documented in the Library yet.
                   </Text>
                 </View>

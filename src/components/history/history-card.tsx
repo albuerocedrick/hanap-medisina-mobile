@@ -1,7 +1,15 @@
 import { ScanHistoryItem } from "@/src/services/firebaseHistory";
 import { Feather } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface Props {
   item: ScanHistoryItem;
@@ -9,11 +17,16 @@ interface Props {
 }
 
 export const HistoryCard: React.FC<Props> = ({ item, onPress }) => {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const isPending = item.status === "pending";
 
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   // FIX FOR PROBLEM 3 & 4: Correct Confidence Math
-  // If confidence is already given out of 100 (e.g. 99.5), use it. 
-  // If it's a decimal (e.g. 0.995), multiply by 100.
   const rawConf = item.confidence;
   const confPct = rawConf <= 1 ? rawConf * 100 : rawConf;
   
@@ -21,17 +34,11 @@ export const HistoryCard: React.FC<Props> = ({ item, onPress }) => {
   const displayConf = Number(confPct.toFixed(2));
   const barWidth = Math.min(Math.max(displayConf, 0), 100);
 
-  // Dynamic colors
-  const getConfColor = (val: number) => {
-    if (val >= 80) return "bg-green-500 text-green-600";
-    if (val >= 50) return "bg-amber-500 text-amber-600";
-    return "bg-red-500 text-red-600";
-  };
-
+  // Dynamic colors for confidence
   const getConfHex = (val: number) => {
-    if (val >= 80) return "#22c55e";
-    if (val >= 50) return "#f59e0b";
-    return "#ef4444";
+    if (val >= 80) return "#16a34a"; // green-600
+    if (val >= 50) return "#f59e0b"; // amber-500
+    return "#ef4444"; // red-500
   };
 
   // FIX FOR PROBLEM 2: Accurate relative time handling
@@ -51,17 +58,36 @@ export const HistoryCard: React.FC<Props> = ({ item, onPress }) => {
     });
   };
 
-  // Rule 9 Nesting: Outer container p-3 (12px), rounded-2xl (16px) -> Inner image rounded-md (6px).
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
+    <AnimatedTouchable
+      activeOpacity={0.85}
+      onPressIn={() => {
+        scale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+      }}
       onPress={() => onPress(item)}
-      className={`mx-4 my-2 p-3 flex-row gap-4 bg-white rounded-2xl border shadow-sm ${
-        isPending ? "border-amber-200" : "border-[#e5e7eb]"
-      }`}
+      style={[
+        {
+          backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#FAFEEF",
+          borderColor: isPending 
+            ? (isDark ? "rgba(245, 158, 11, 0.4)" : "#fde68a") // amber
+            : (isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.55)"), // standard green-tint
+          borderWidth: 1,
+        },
+        animStyle
+      ]}
+      className="mx-4 my-2 p-3 flex-row gap-4 rounded-2xl shadow-sm"
     >
       {/* Thumbnail */}
-      <View className="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden relative">
+      <View 
+        style={{
+          borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.3)",
+          borderWidth: 1,
+        }}
+        className="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden relative"
+      >
         <Image
           source={{ uri: item.imageUri }}
           className="w-full h-full"
@@ -75,21 +101,48 @@ export const HistoryCard: React.FC<Props> = ({ item, onPress }) => {
       {/* Content */}
       <View className="flex-1 justify-between py-1">
         <View className="flex-row items-start justify-between gap-2">
-          <Text className="flex-1 text-base font-semibold text-slate-900" numberOfLines={1}>
+          <Text 
+            style={{
+              color: isDark ? "rgba(248,250,252,0.9)" : "#22451C",
+              fontFamily: "Quicksand_700Bold",
+            }}
+            className="flex-1 text-base" 
+            numberOfLines={1}
+          >
             {item.plantName}
           </Text>
 
           {isPending ? (
-            <View className="flex-row items-center gap-1 bg-amber-50 px-2 py-1 rounded-full border border-amber-200">
+            <View 
+              style={{
+                backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#fffbeb",
+                borderColor: isDark ? "rgba(245, 158, 11, 0.3)" : "#fde68a",
+                borderWidth: 1,
+              }}
+              className="flex-row items-center gap-1 px-2 py-1 rounded-full"
+            >
               <View className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              <Text className="text-[10px] font-semibold text-amber-600 tracking-wide uppercase">
+              <Text 
+                style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "#fbbf24" : "#d97706" }}
+                className="text-[10px] tracking-wide uppercase"
+              >
                 Pending
               </Text>
             </View>
           ) : (
-            <View className="flex-row items-center gap-1 bg-green-50 px-2 py-1 rounded-full border border-green-200">
-              <Feather name="check" size={10} color="#16a34a" />
-              <Text className="text-[10px] font-semibold text-green-700 tracking-wide uppercase">
+            <View 
+              style={{
+                backgroundColor: isDark ? "rgba(22, 163, 74, 0.15)" : "#f0fdf4",
+                borderColor: isDark ? "rgba(22, 163, 74, 0.3)" : "#bbf7d0",
+                borderWidth: 1,
+              }}
+              className="flex-row items-center gap-1 px-2 py-1 rounded-full"
+            >
+              <Feather name="check" size={10} color={isDark ? "#4ade80" : "#16a34a"} />
+              <Text 
+                style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "#4ade80" : "#15803d" }}
+                className="text-[10px] tracking-wide uppercase"
+              >
                 Synced
               </Text>
             </View>
@@ -98,23 +151,46 @@ export const HistoryCard: React.FC<Props> = ({ item, onPress }) => {
 
         <View className="mt-1">
           <View className="flex-row justify-between mb-1.5">
-            <Text className="text-xs font-medium text-slate-500">Confidence</Text>
-            <Text className={`text-xs font-bold ${getConfColor(displayConf).split(' ')[1]}`}>
+            <Text 
+              style={{
+                color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.55)",
+                fontFamily: "Quicksand_600SemiBold",
+              }}
+              className="text-xs"
+            >
+              Confidence
+            </Text>
+            <Text 
+              style={{
+                color: getConfHex(displayConf),
+                fontFamily: "Quicksand_700Bold",
+              }}
+              className="text-xs"
+            >
               {displayConf}%
             </Text>
           </View>
-          <View className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <View 
+            style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.3)" }}
+            className="h-1.5 rounded-full overflow-hidden"
+          >
             <View
-              className={`h-full rounded-full`}
+              className="h-full rounded-full"
               style={{ width: `${barWidth}%`, backgroundColor: getConfHex(displayConf) }}
             />
           </View>
         </View>
 
-        <Text className="mt-2 text-[11px] font-medium text-slate-400">
+        <Text 
+          style={{
+            color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.45)",
+            fontFamily: "Quicksand_500Medium",
+          }}
+          className="mt-2 text-[11px]"
+        >
           {relativeTime(item.createdAt)}
         </Text>
       </View>
-    </TouchableOpacity>
+    </AnimatedTouchable>
   );
 };

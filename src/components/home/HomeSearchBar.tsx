@@ -4,6 +4,7 @@ import { useColorScheme } from "nativewind";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -133,8 +134,8 @@ export function HomeSearchBar({
             barStyle,
             {
               flex: 1,
-              height: 56,
-              borderRadius: 28,
+              height: 44,
+              borderRadius: 20,
               borderWidth: 1,
               flexDirection: "row",
               alignItems: "center",
@@ -170,13 +171,13 @@ export function HomeSearchBar({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Search your plant"
-            placeholderTextColor={isDark ? "rgba(226,232,240,0.45)" : "#94A3B8"}
+            placeholderTextColor={isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)"}
             style={{
               flex: 1,
               height: "100%",
-              fontSize: 15,
+              fontSize: 14,
               fontFamily: "Quicksand_500Medium",
-              color: isDark ? "rgba(248,250,252,0.92)" : "#334155",
+              color: isDark ? "rgba(248,250,252,0.92)" : "#22451C",
               letterSpacing: 0.2,
             }}
             returnKeyType="search"
@@ -191,9 +192,9 @@ export function HomeSearchBar({
               onPress={clearSearch}
               activeOpacity={0.7}
               style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
+                width: 20,
+                height: 20,
+                borderRadius: 10,
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "#E2E8F0",
@@ -201,7 +202,7 @@ export function HomeSearchBar({
             >
               <Feather
                 name="x"
-                size={13}
+                size={12}
                 color={isDark ? "#E5E7EB" : "#6B7280"}
               />
             </TouchableOpacity>
@@ -211,9 +212,9 @@ export function HomeSearchBar({
         <Animated.View
           style={[
             {
-              width: 46,
-              height: 46,
-              borderRadius: 23,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
               marginLeft: 10,
@@ -233,9 +234,9 @@ export function HomeSearchBar({
               router.push("/(tabs)/library");
             }}
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 23,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
             }}

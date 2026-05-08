@@ -19,7 +19,8 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { useColorScheme } from "nativewind";
 import { ComparisonTraits } from "../../services/firebaseLibrary";
 
 // ─────────────────────────────────────────────
@@ -73,6 +74,9 @@ export function PhysicalChecklistRow({
   isHighlighted = false,
   isLast = false,
 }: PhysicalChecklistRowProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   const safeA = valueA?.trim() || "—";
   const safeB = valueB?.trim() || "—";
 
@@ -86,31 +90,26 @@ export function PhysicalChecklistRow({
 
   return (
     <View
-      className={[
-        "flex-row items-stretch",
-        isHighlighted ? "bg-green-50" : "bg-white",
-        !isLast ? "border-b border-gray-100" : "",
-      ].join(" ")}
+      style={{
+        flexDirection: "row", alignItems: "stretch",
+        backgroundColor: isHighlighted ? (isDark ? "rgba(255,255,255,0.03)" : "rgba(34,69,28,0.03)") : "transparent",
+        borderBottomWidth: !isLast ? StyleSheet.hairlineWidth : 0,
+        borderBottomColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)"
+      }}
     >
-      {/* ── Col 1: Trait label ──────────────────────────────────────────── */}
-      {/*
-       * Fixed width matches the header corner cell exactly.
-       * The "Same" badge lives here — under the label — so neither
-       * value column is ever disturbed by badge layout.
-       */}
       <View
-        style={{ width: TRAIT_COL_WIDTH }}
-        className="py-3 px-3 justify-center border-r border-gray-100"
+        style={{ width: TRAIT_COL_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)" }}
+        className="py-3 px-3 justify-center"
       >
         <View className="flex-row items-center">
           <Ionicons
             name={traitIcon}
             size={12}
-            color="#6B7280"
+            color={isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)"}
             style={{ marginRight: 5, flexShrink: 0 }}
           />
           <Text
-            className="text-gray-500 text-xs font-semibold uppercase tracking-wide flex-shrink"
+            style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 1 }}
             numberOfLines={1}
           >
             {traitLabel}
@@ -119,33 +118,33 @@ export function PhysicalChecklistRow({
 
         {areSame && (
           <View className="mt-1 flex-row items-center">
-            <Ionicons name="checkmark-circle" size={10} color="#15803d" />
-            <Text className="text-green-700 text-xs ml-0.5 font-medium">
+            <Ionicons name="checkmark-circle" size={10} color={isDark ? "#A2CFA3" : "#4D8035"} />
+            <Text style={{ fontFamily: "Quicksand_600SemiBold", color: isDark ? "#A2CFA3" : "#4D8035", fontSize: 10, marginLeft: 2 }}>
               Same
             </Text>
           </View>
         )}
       </View>
 
-      {/* ── Col 2: Plant A value ────────────────────────────────────────── */}
-      <View className="flex-1 py-3 px-3 justify-center border-r border-gray-100">
+      <View style={{ flex: 1, borderRightWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)" }} className="py-3 px-3 justify-center">
         <Text
-          className={[
-            "text-sm leading-5",
-            missingA ? "text-gray-300 italic" : "text-gray-800",
-          ].join(" ")}
+          style={{
+            fontFamily: "Quicksand_500Medium", fontSize: 14, lineHeight: 20,
+            color: missingA ? (isDark ? "rgba(248,250,252,0.3)" : "rgba(34,69,28,0.3)") : (isDark ? "#F8FAFC" : "#22451C"),
+            fontStyle: missingA ? "italic" : "normal"
+          }}
         >
           {safeA}
         </Text>
       </View>
 
-      {/* ── Col 3: Plant B value ────────────────────────────────────────── */}
-      <View className="flex-1 py-3 px-3 justify-center">
+      <View style={{ flex: 1 }} className="py-3 px-3 justify-center">
         <Text
-          className={[
-            "text-sm leading-5",
-            missingB ? "text-gray-300 italic" : "text-gray-800",
-          ].join(" ")}
+          style={{
+            fontFamily: "Quicksand_500Medium", fontSize: 14, lineHeight: 20,
+            color: missingB ? (isDark ? "rgba(248,250,252,0.3)" : "rgba(34,69,28,0.3)") : (isDark ? "#F8FAFC" : "#22451C"),
+            fontStyle: missingB ? "italic" : "normal"
+          }}
         >
           {safeB}
         </Text>
@@ -175,12 +174,15 @@ export function PhysicalChecklistTable({
   plantNameA,
   plantNameB,
 }: PhysicalChecklistTableProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   // ── Guard ─────────────────────────────────────────────────────────────────
   if (!traitsA && !traitsB) {
     return (
-      <View className="bg-gray-50 rounded-2xl px-4 py-8 items-center">
-        <Ionicons name="clipboard-outline" size={28} color="#D1D5DB" />
-        <Text className="text-gray-400 text-sm text-center mt-2">
+      <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(34,69,28,0.02)", borderRadius: 16, padding: 32, alignItems: "center" }}>
+        <Ionicons name="clipboard-outline" size={28} color={isDark ? "rgba(248,250,252,0.3)" : "rgba(34,69,28,0.3)"} />
+        <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)", fontSize: 14, textAlign: "center", marginTop: 8 }}>
           Comparison traits are not available for these plants.
         </Text>
       </View>
@@ -200,48 +202,39 @@ export function PhysicalChecklistTable({
     smell: "",
   };
 
-  // Pre-filter so isLast is accurate — only rows that will actually render
   const visibleTraits = TRAIT_ORDER.filter(
     (key) => safeTraitsA[key]?.trim() || safeTraitsB[key]?.trim(),
   );
 
   return (
-    <View className="rounded-2xl overflow-hidden border border-gray-200">
+    <View style={{ borderRadius: 16, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }}>
       {/* ── Header row ────────────────────────────────────────────────────── */}
-      {/*
-       * Mirrors the EXACT same 3-column structure as PhysicalChecklistRow.
-       * TRAIT_COL_WIDTH is the shared constant — updating it once adjusts both.
-       */}
       <View
-        className="flex-row items-stretch bg-green-700"
-        style={{ minHeight: 44 }}
+        style={{ flexDirection: "row", alignItems: "stretch", backgroundColor: isDark ? "rgba(162,207,163,0.1)" : "rgba(77,128,53,0.1)", minHeight: 44 }}
       >
-        {/* Col 1 corner: icon only */}
         <View
-          style={{ width: TRAIT_COL_WIDTH }}
-          className="items-center justify-center border-r border-green-600 px-3"
+          style={{ width: TRAIT_COL_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }}
+          className="items-center justify-center px-3"
         >
           <Ionicons
             name="git-compare-outline"
             size={16}
-            color="rgba(255,255,255,0.65)"
+            color={isDark ? "rgba(248,250,252,0.7)" : "#22451C"}
           />
         </View>
 
-        {/* Col 2: Plant A name */}
-        <View className="flex-1 items-center justify-center border-r border-green-600 px-3 py-2">
+        <View style={{ flex: 1, borderRightWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }} className="items-center justify-center px-3 py-2">
           <Text
-            className="text-white text-xs font-bold text-center"
+            style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 13, fontWeight: "600", color: isDark ? "#F8FAFC" : "#22451C", textAlign: "center" }}
             numberOfLines={2}
           >
             {plantNameA?.trim() || "Plant A"}
           </Text>
         </View>
 
-        {/* Col 3: Plant B name */}
-        <View className="flex-1 items-center justify-center px-3 py-2">
+        <View style={{ flex: 1 }} className="items-center justify-center px-3 py-2">
           <Text
-            className="text-white text-xs font-bold text-center"
+            style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 13, fontWeight: "600", color: isDark ? "#F8FAFC" : "#22451C", textAlign: "center" }}
             numberOfLines={2}
           >
             {plantNameB?.trim() || "Plant B"}
@@ -251,8 +244,8 @@ export function PhysicalChecklistTable({
 
       {/* ── Data rows ─────────────────────────────────────────────────────── */}
       {visibleTraits.length === 0 ? (
-        <View className="bg-white px-4 py-6 items-center">
-          <Text className="text-gray-400 text-sm italic">
+        <View style={{ paddingHorizontal: 16, paddingVertical: 24, alignItems: "center", backgroundColor: isDark ? "#0B120B" : "#FAFEEF" }}>
+          <Text style={{ fontFamily: "Quicksand_500Medium", fontStyle: "italic", color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.4)", fontSize: 14 }}>
             No trait data available.
           </Text>
         </View>
