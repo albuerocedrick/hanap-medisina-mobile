@@ -8,10 +8,13 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useColorScheme } from "nativewind";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Components
@@ -32,6 +35,8 @@ const PLACEHOLDER_IMAGE = require("../../../assets/images/plant-placeholder.jpg"
 export default function PlantComparisonScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   // Params from router (CompareTab passes these)
   const {
@@ -136,12 +141,11 @@ export default function PlantComparisonScreen() {
         onRequestClose={() => setIsPickerOpen(false)}
       >
         <View
-          className="flex-1 bg-gray-50"
-          style={{ paddingTop: Platform.OS === "ios" ? 0 : insets.top }}
+          style={{ flex: 1, backgroundColor: isDark ? "#0B120B" : "#FAFEEF", paddingTop: Platform.OS === "ios" ? 0 : insets.top }}
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 py-4 bg-white border-b border-gray-200">
-            <Text className="text-lg font-bold text-gray-800">
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }}>
+            <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 20, color: isDark ? "#F8FAFC" : "#22451C" }}>
               Select Plant to Compare
             </Text>
             <TouchableOpacity
@@ -150,7 +154,7 @@ export default function PlantComparisonScreen() {
                 if (!plantB) router.back(); // Auto-go back if they abort initial pick
               }}
             >
-              <Ionicons name="close" size={24} color="#4B5563" />
+              <Ionicons name="close" size={24} color={isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)"} />
             </TouchableOpacity>
           </View>
 
@@ -171,8 +175,8 @@ export default function PlantComparisonScreen() {
               />
             )}
             ListEmptyComponent={
-              <View className="pt-10 items-center">
-                <Text className="text-gray-500">
+              <View style={{ paddingTop: 40, alignItems: "center" }}>
+                <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)" }}>
                   No plants available to compare.
                 </Text>
               </View>
@@ -183,29 +187,28 @@ export default function PlantComparisonScreen() {
     );
   };
 
-  // ─── Loading & Error States ──────────────────────────────────────────────
   if (isLoading && !isPickerOpen) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
+      <View style={{ flex: 1, backgroundColor: isDark ? "#0B120B" : "#FAFEEF", alignItems: "center", justifyContent: "center" }}>
         <Stack.Screen options={{ headerTitle: "Comparing..." }} />
-        <ActivityIndicator size="large" color="#16a34a" />
+        <ActivityIndicator size="large" color={isDark ? "#A2CFA3" : "#22451C"} />
       </View>
     );
   }
 
   if (error || !plantA) {
     return (
-      <View className="flex-1 bg-white items-center justify-center px-6">
+      <View style={{ flex: 1, backgroundColor: isDark ? "#0B120B" : "#FAFEEF", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
         <Stack.Screen options={{ headerTitle: "Error" }} />
-        <Ionicons name="alert-circle-outline" size={48} color="#dc2626" />
-        <Text className="text-gray-500 mt-4 text-center mb-6">
+        <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+        <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)", marginTop: 16, textAlign: "center", marginBottom: 24 }}>
           {error || "Could not load comparison."}
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
-          className="bg-gray-100 px-6 py-3 rounded-xl"
+          style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }}
         >
-          <Text className="text-gray-700 font-medium">Go Back</Text>
+          <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "#F8FAFC" : "#22451C" }}>Go Back</Text>
         </TouchableOpacity>
         {renderPickerModal()}
       </View>
@@ -214,45 +217,63 @@ export default function PlantComparisonScreen() {
 
   // ─── Main Comparison Render ──────────────────────────────────────────────
   return (
-    <View className="flex-1 bg-gray-50">
+    <View style={{ flex: 1, backgroundColor: isDark ? "#0B120B" : "#FAFEEF" }}>
       <Stack.Screen
         options={{
           headerTitle: "Compare",
-          headerTitleStyle: { color: "#111827", fontWeight: "bold" },
-          headerTintColor: "#16a34a",
+          headerTitleStyle: { color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "serif", fontStyle: "italic" as const, fontSize: 22, letterSpacing: 0.6 } as any,
+          headerTintColor: "white",
           headerBackTitle: "",
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{
+                width: 40, height: 40, borderRadius: 20,
+                alignItems: "center", justifyContent: "center",
+                backgroundColor: "rgba(0,0,0,0.3)",
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: "rgba(255,255,255,0.2)",
+                marginLeft: Platform.OS === "ios" ? 4 : 8,
+                marginRight: 20,
+              }}
+              accessibilityLabel="Go Back"
+            >
+              <Ionicons name="chevron-back" size={20} color="white" />
+            </TouchableOpacity>
+          ),
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: "#f9fafb" },
+          headerStyle: { backgroundColor: isDark ? "#0B120B" : "#FAFEEF" },
         }}
       />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 140 }}
       >
         {/* ─── Top: Side-by-Side Images ─────────────────────────────────────── */}
-        <View className="flex-row h-64 w-full bg-white border-b border-gray-200">
+        <View style={{ flexDirection: "row", height: 256, width: "100%", backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(34,69,28,0.02)", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }}>
           {/* Plant A (Left) */}
-          <View className="flex-1 relative border-r border-gray-200">
+          <View style={{ flex: 1, position: "relative", borderRightWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)" }}>
             <Image
               source={
                 plantA.imageUrl ? { uri: plantA.imageUrl } : PLACEHOLDER_IMAGE
               }
-              className="w-full h-full"
+              style={{ width: "100%", height: "100%" }}
               resizeMode="cover"
             />
-            {/* Gradient Dark Overlay for Text readability */}
-            <View className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/80 to-transparent" />
-            <Text
-              className="absolute bottom-3 left-3 right-2 text-white font-bold text-sm"
-              numberOfLines={2}
+            <LinearGradient
+              colors={['transparent', 'rgba(15, 35, 15, 0.6)', 'rgba(10, 25, 10, 0.95)']}
+              locations={[0, 0.5, 1]}
+              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 60, paddingBottom: 12, paddingHorizontal: 12 }}
             >
-              {plantA.name}
-            </Text>
+              <Text style={{ color: "white", fontFamily: "serif", fontStyle: "italic", fontSize: 16, fontWeight: "600", textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }} numberOfLines={2}>
+                {plantA.name}
+              </Text>
+            </LinearGradient>
           </View>
 
           {/* Plant B (Right) */}
-          <View className="flex-1 relative">
+          <View style={{ flex: 1, position: "relative" }}>
             {plantB ? (
               <>
                 <Image
@@ -261,61 +282,61 @@ export default function PlantComparisonScreen() {
                       ? { uri: plantB.imageUrl }
                       : PLACEHOLDER_IMAGE
                   }
-                  className="w-full h-full"
+                  style={{ width: "100%", height: "100%" }}
                   resizeMode="cover"
                 />
-                <View className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/80 to-transparent" />
-                <Text
-                  className="absolute bottom-3 left-3 right-2 text-white font-bold text-sm"
-                  numberOfLines={2}
-                >
-                  {plantB.name}
-                </Text>
-                {/* Change Plant Button */}
-                <TouchableOpacity
-                  onPress={() => setIsPickerOpen(true)}
-                  className="absolute top-3 right-3 bg-white/20 backdrop-blur-md rounded-full px-2.5 py-1 flex-row items-center border border-white/40"
-                >
-                  <Ionicons name="swap-horizontal" size={12} color="white" />
-                  <Text className="text-white text-xs font-semibold ml-1">
-                    Change
-                  </Text>
-                </TouchableOpacity>
+                  <LinearGradient
+                    colors={['transparent', 'rgba(15, 35, 15, 0.6)', 'rgba(10, 25, 10, 0.95)']}
+                    locations={[0, 0.5, 1]}
+                    style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 60, paddingBottom: 12, paddingHorizontal: 12 }}
+                  >
+                    <Text style={{ color: "white", fontFamily: "serif", fontStyle: "italic", fontSize: 16, fontWeight: "600", textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }} numberOfLines={2}>
+                      {plantB.name}
+                    </Text>
+                  </LinearGradient>
+                  {/* Change Plant Button */}
+                  <TouchableOpacity
+                    onPress={() => setIsPickerOpen(true)}
+                    style={{ position: "absolute", top: 12, right: 12, backgroundColor: "rgba(0,0,0,0.3)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.4)" }}
+                  >
+                    <Ionicons name="swap-horizontal" size={12} color="white" />
+                    <Text style={{ color: "white", fontSize: 10, fontFamily: "Quicksand_700Bold", marginLeft: 4, textTransform: "uppercase" }}>
+                      Change
+                    </Text>
+                  </TouchableOpacity>
               </>
             ) : (
               // Empty Slot State
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setIsPickerOpen(true)}
-                className="flex-1 items-center justify-center bg-gray-100"
+                style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(34,69,28,0.02)" }}
               >
-                <View className="bg-white rounded-full p-3 shadow-sm border border-gray-200">
-                  <Ionicons name="add" size={24} color="#16a34a" />
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)", borderWidth: 1, borderStyle: "dashed", borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.2)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="add" size={28} color={isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)"} />
                 </View>
-                <Text className="text-gray-500 font-medium text-xs mt-3">
+                <Text style={{ fontFamily: "Quicksand_600SemiBold", color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)", fontSize: 13, marginTop: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Select Plant
                 </Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Central "VS" Badge */}
+          {/* Central "VS" Badge – simple translucent circle, no BlurView for perf */}
           <View
-            className="absolute top-1/2 left-1/2 w-10 h-10 bg-white rounded-full border border-gray-200 shadow-md items-center justify-center"
-            style={{ transform: [{ translateX: -20 }, { translateY: -20 }] }}
+            style={{ position: "absolute", top: "50%", left: "50%", width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? "rgba(11,18,11,0.75)" : "rgba(250,254,239,0.85)", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(34,69,28,0.2)", alignItems: "center", justifyContent: "center", transform: [{ translateX: -22 }, { translateY: -22 }], shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}
           >
-            <Text className="text-green-700 font-extrabold text-xs">VS</Text>
+            <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "#F8FAFC" : "#22451C", fontSize: 13 }}>VS</Text>
           </View>
         </View>
 
         {/* ─── Bottom: Physical Checklist ─────────────────────────────────── */}
-        <View className="px-4 pt-6 pb-2">
-          <Text className="text-gray-800 font-bold text-lg mb-1">
+        <View style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 }}>
+          <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 20, color: isDark ? "#F8FAFC" : "#22451C", marginBottom: 4 }}>
             Physical Checklist
           </Text>
-          <Text className="text-gray-500 text-sm mb-4 leading-5">
-            Compare key physical characteristics to help accurately identify the
-            plant.
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)", fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
+            Compare key physical characteristics to help accurately identify the plant.
           </Text>
 
           {plantB ? (
@@ -326,16 +347,16 @@ export default function PlantComparisonScreen() {
               plantNameB={plantB.name}
             />
           ) : (
-            <View className="bg-white border border-gray-200 rounded-2xl py-10 items-center justify-center px-6">
-              <Ionicons name="git-compare-outline" size={36} color="#D1D5DB" />
-              <Text className="text-gray-500 font-medium mt-3 text-center">
+            <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(34,69,28,0.02)", borderRadius: 16, padding: 32, alignItems: "center", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.05)" }}>
+              <Ionicons name="git-compare-outline" size={36} color={isDark ? "rgba(248,250,252,0.3)" : "rgba(34,69,28,0.3)"} />
+              <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)", marginTop: 12, textAlign: "center" }}>
                 Select a second plant to view the physical traits comparison.
               </Text>
               <TouchableOpacity
                 onPress={() => setIsPickerOpen(true)}
-                className="mt-4 bg-green-600 px-5 py-2.5 rounded-xl"
+                style={{ marginTop: 16, backgroundColor: isDark ? "rgba(162,207,163,0.15)" : "rgba(34,69,28,0.1)", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(162,207,163,0.3)" : "rgba(34,69,28,0.2)" }}
               >
-                <Text className="text-white font-semibold">Choose Plant</Text>
+                <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "#A2CFA3" : "#22451C" }}>Choose Plant</Text>
               </TouchableOpacity>
             </View>
           )}

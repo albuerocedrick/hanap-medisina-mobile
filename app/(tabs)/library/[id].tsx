@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useColorScheme } from "nativewind";
 
 // Components
 import { CompareTab } from "../../../src/components/plant-details/compare-tab";
@@ -42,6 +43,8 @@ export default function PlantDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   // ─── Global State ────────────────────────────────────────────────────────
   const isOnline = useNetworkStore(selectIsOnline);
@@ -207,34 +210,43 @@ export default function PlantDetailsScreen() {
   }
 
   // ─── Main Render ─────────────────────────────────────────────────────────
+
   return (
-    <View className="flex-1 bg-gray-50">
+    <View style={{ flex: 1, backgroundColor: isDark ? "#0B120B" : "#FAFEEF" }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ─── Fixed Header Nav (Floating over image) ───────────────────────── */}
       <View
-        className="absolute top-0 left-0 right-0 z-10 flex-row justify-between items-center px-4"
-        style={{ paddingTop: Math.max(insets.top, 20) + 10 }} // Safely handle notches
+        style={{
+          position: "absolute", top: Math.max(insets.top, 20) + 10, left: 16, right: 16,
+          zIndex: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center"
+        }}
       >
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-black/40 items-center justify-center backdrop-blur-md"
+          style={{
+            width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.3)", borderWidth: require("react-native").StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.2)"
+          }}
           accessibilityLabel="Go Back"
         >
-          <Ionicons name="chevron-back" size={24} color="white" />
+          <Ionicons name="chevron-back" size={20} color="white" />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleToggleFavorite}
-          className="w-10 h-10 rounded-full bg-black/40 items-center justify-center backdrop-blur-md"
+          style={{
+            width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.3)", borderWidth: require("react-native").StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.2)"
+          }}
           accessibilityLabel={
             isFavorite ? "Remove from favorites" : "Add to favorites"
           }
         >
           <Ionicons
             name={isFavorite ? "heart" : "heart-outline"}
-            size={22}
-            color={isFavorite ? "#4ade80" : "white"}
+            size={20}
+            color={isFavorite ? "#A2CFA3" : "white"}
           />
         </TouchableOpacity>
       </View>
@@ -242,38 +254,50 @@ export default function PlantDetailsScreen() {
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
       >
         {/* ─── Image Hero Section ─────────────────────────────────────────── */}
-        <View className="w-full h-72 bg-green-900">
+        <View style={{ width: "100%", height: 320, backgroundColor: isDark ? "#121A14" : "#EEF5E9" }}>
           <Image
             source={
               !imageError && plant.imageUrl
                 ? { uri: plant.imageUrl }
                 : PLACEHOLDER_IMAGE
             }
-            className="w-full h-full opacity-90"
+            style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
             onError={() => setImageError(true)}
           />
-          {/* Subtle gradient overlay at the bottom of the image */}
-          <View className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 to-transparent opacity-100" />
         </View>
 
         {/* ─── Plant Header Info ───────────────────────────────────────── */}
-        <View className="px-6 pt-4 pb-2 bg-gray-50">
-          <Text className="text-3xl font-extrabold text-gray-900 leading-tight">
+        <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, backgroundColor: isDark ? "#0B120B" : "#FAFEEF" }}>
+          <Text 
+            style={{
+              fontSize: 32, fontFamily: "serif", fontStyle: "italic", fontWeight: "600",
+              color: isDark ? "#F8FAFC" : "#22451C", lineHeight: 38
+            }}
+          >
             {plant.name}
           </Text>
-          <Text className="text-gray-500 italic text-base mt-1">
+          <Text 
+            style={{
+              fontSize: 15, fontFamily: "serif", fontStyle: "italic",
+              color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.7)", marginTop: 4
+            }}
+          >
             {plant.scientificName}
           </Text>
 
           {/* Phase 6: Partial offline banner */}
           {isPartialOffline && (
-            <View className="mt-3 bg-amber-50 border border-amber-200 rounded-xl flex-row items-center p-3">
-              <Ionicons name="archive-outline" size={16} color="#d97706" />
-              <Text className="text-amber-800 ml-2 text-xs flex-1 font-medium">
+            <View style={{
+              marginTop: 16, backgroundColor: isDark ? "rgba(217,119,6,0.1)" : "#FFFBEB",
+              borderWidth: require("react-native").StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(217,119,6,0.3)" : "#FDE68A",
+              borderRadius: 12, flexDirection: "row", alignItems: "center", padding: 12
+            }}>
+              <Ionicons name="archive-outline" size={16} color={isDark ? "#FBBF24" : "#D97706"} />
+              <Text style={{ fontFamily: "Quicksand_600SemiBold", fontSize: 12, color: isDark ? "#FDE68A" : "#B45309", marginLeft: 8, flex: 1 }}>
                 Offline — showing basic info only. Connect to see full details.
               </Text>
             </View>
@@ -281,13 +305,17 @@ export default function PlantDetailsScreen() {
 
           {/* Categories */}
           {plant.categories?.length > 0 && (
-            <View className="flex-row flex-wrap mt-3 gap-2">
+            <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 16, gap: 8 }}>
               {plant.categories.map((cat) => (
                 <View
                   key={cat}
-                  className="bg-green-100 border border-green-200 rounded-full px-3 py-1"
+                  style={{
+                    backgroundColor: "transparent",
+                    borderWidth: require("react-native").StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(162,207,163,0.8)",
+                    borderRadius: 16, paddingHorizontal: 12, paddingVertical: 4
+                  }}
                 >
-                  <Text className="text-green-800 text-xs font-semibold">
+                  <Text style={{ fontFamily: "Quicksand_600SemiBold", fontSize: 12, color: isDark ? "rgba(248,250,252,0.8)" : "#22451C" }}>
                     {cat}
                   </Text>
                 </View>
@@ -297,8 +325,7 @@ export default function PlantDetailsScreen() {
         </View>
 
         {/* ─── Sub-Tabs Navigation ────────────────────────────────────────── */}
-        {/* Phase 6: Research and Compare tabs are hidden in partial offline mode */}
-        <View className="flex-row px-4 mt-4 border-b border-gray-200">
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, borderBottomWidth: require("react-native").StyleSheet.hairlineWidth, borderBottomColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(162,207,163,0.3)" }}>
           {(isPartialOffline
             ? (["details"] as TabKey[])
             : (["details", "research", "compare"] as TabKey[])
@@ -308,16 +335,18 @@ export default function PlantDetailsScreen() {
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab)}
-                className={`flex-1 py-3 items-center border-b-2 ${
-                  isActive ? "border-green-600" : "border-transparent"
-                }`}
+                style={{
+                  flex: 1, paddingVertical: 14, alignItems: "center",
+                  borderBottomWidth: isActive ? 2 : 0, borderBottomColor: isActive ? (isDark ? "#A2CFA3" : "#22451C") : "transparent"
+                }}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isActive }}
               >
                 <Text
-                  className={`text-sm font-semibold uppercase tracking-wider ${
-                    isActive ? "text-green-700" : "text-gray-400"
-                  }`}
+                  style={{
+                    fontFamily: "Quicksand_700Bold", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5,
+                    color: isActive ? (isDark ? "#A2CFA3" : "#22451C") : (isDark ? "rgba(255,255,255,0.4)" : "rgba(34,69,28,0.5)")
+                  }}
                 >
                   {tab}
                 </Text>
@@ -327,7 +356,7 @@ export default function PlantDetailsScreen() {
         </View>
 
         {/* ─── Tab Content ────────────────────────────────────────────────── */}
-        <View className="flex-1 min-h-[400px]">
+        <View style={{ flex: 1, minHeight: 400 }}>
           {activeTab === "details" && (
             <DetailsTab
               localName={plant.details?.localName ?? ""}

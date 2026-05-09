@@ -8,42 +8,35 @@
  * "All" is always the first pill and represents null (no filter).
  */
 
+import { useColorScheme } from "nativewind";
 import React, { useEffect, useRef } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   selectActiveCategory,
   selectCategories,
   useLibraryStore,
-} from "../../store/useLibraryStore";
-import { selectIsOnline, useNetworkStore } from "../../store/useNetworkStore";
-
-// ─────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────
+} from "@/src/store/useLibraryStore";
+import { selectIsOnline, useNetworkStore } from "@/src/store/useNetworkStore";
 
 const ALL_LABEL = "All";
-/** Number of skeleton pills to show while categories are loading. */
 const SKELETON_COUNT = 5;
-const SKELETON_WIDTHS = [48, 64, 56, 72, 52]; // px — varied widths look natural
-
-// ─────────────────────────────────────────────
-// PROPS
-// ─────────────────────────────────────────────
+const SKELETON_WIDTHS = [48, 64, 56, 72, 52];
 
 interface FilterPillsProps {
-  /** Called after the active category changes. Useful for parent scroll-to-top. */
   onCategoryChange?: (category: string | null) => void;
 }
 
-// ─────────────────────────────────────────────
-// SUB-COMPONENTS
-// ─────────────────────────────────────────────
-
 function SkeletonPill({ width }: { width: number }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   return (
     <View
-      className="h-9 rounded-full bg-gray-100 mr-2"
-      style={{ width }}
+      style={{
+        width, height: 36, borderRadius: 18,
+        backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.15)",
+        marginRight: 8,
+      }}
       accessibilityElementsHidden
     />
   );
@@ -57,6 +50,9 @@ interface PillProps {
 }
 
 function Pill({ label, isActive, isDisabled, onPress }: PillProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -65,24 +61,29 @@ function Pill({ label, isActive, isDisabled, onPress }: PillProps) {
       accessibilityRole="button"
       accessibilityState={{ selected: isActive, disabled: isDisabled }}
       accessibilityLabel={`Filter by ${label}`}
-      className="mr-2"
+      style={{ marginRight: 8, opacity: isDisabled ? 0.5 : 1 }}
     >
       <View
-        className={`
-          h-9 px-4 rounded-full items-center justify-center border
-          ${
-            isActive
-              ? "bg-green-700 border-green-700"
-              : "bg-white border-gray-200"
-          }
-          ${isDisabled ? "opacity-50" : "opacity-100"}
-        `}
+        style={{
+          height: 36, paddingHorizontal: 16, borderRadius: 18,
+          alignItems: "center", justifyContent: "center",
+          backgroundColor: isActive 
+            ? (isDark ? "rgba(162,207,163,0.15)" : "#22451C")
+            : (isDark ? "rgba(255,255,255,0.04)" : "transparent"),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isActive
+            ? (isDark ? "rgba(162,207,163,0.8)" : "#22451C")
+            : (isDark ? "rgba(255,255,255,0.12)" : "rgba(162,207,163,0.8)"),
+        }}
       >
         <Text
-          className={`
-            text-sm font-medium
-            ${isActive ? "text-white" : "text-gray-600"}
-          `}
+          style={{
+            fontFamily: "Quicksand_600SemiBold",
+            fontSize: 13,
+            color: isActive 
+              ? (isDark ? "#A2CFA3" : "#FAFEEF")
+              : (isDark ? "rgba(248,250,252,0.7)" : "#22451C")
+          }}
           numberOfLines={1}
         >
           {label}
@@ -91,10 +92,6 @@ function Pill({ label, isActive, isDisabled, onPress }: PillProps) {
     </TouchableOpacity>
   );
 }
-
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
 
 export function FilterPills({ onCategoryChange }: FilterPillsProps) {
   const categories = useLibraryStore(selectCategories);
@@ -107,11 +104,9 @@ export function FilterPills({ onCategoryChange }: FilterPillsProps) {
 
   const scrollRef = useRef<ScrollView>(null);
 
-  // Fetch categories once when online and not yet loaded
   useEffect(() => {
     if (isOnline && categories.length === 0) {
       fetchCategories().catch((err) => {
-        // Error is stored in the Zustand store; no need to rethrow here
         console.warn("[FilterPills] fetchCategories failed:", err);
       });
     }
@@ -121,7 +116,6 @@ export function FilterPills({ onCategoryChange }: FilterPillsProps) {
     try {
       setActiveCategory(category);
       onCategoryChange?.(category);
-      // Scroll back to the start when resetting to "All"
       if (category === null) {
         scrollRef.current?.scrollTo({ x: 0, animated: true });
       }
@@ -130,17 +124,15 @@ export function FilterPills({ onCategoryChange }: FilterPillsProps) {
     }
   };
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoadingCategories) {
     return (
       <View className="py-2">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 24 }}
           scrollEnabled={false}
         >
-          {/* "All" pill is always shown */}
           <SkeletonPill width={48} />
           {SKELETON_WIDTHS.map((w, i) => (
             <SkeletonPill key={i} width={w} />
@@ -150,31 +142,24 @@ export function FilterPills({ onCategoryChange }: FilterPillsProps) {
     );
   }
 
-  // ── Error state ───────────────────────────────────────────────────────────
-  // Don't block the whole feed — just hide the pills and let the list render.
   if (categoriesError && categories.length === 0) {
     return null;
   }
 
-  // ── Offline with no categories cached ────────────────────────────────────
-  // Categories are volatile (not persisted). If offline and no session cache,
-  // hide the bar — the user can still browse their favorites.
   if (!isOnline && categories.length === 0) {
     return null;
   }
 
   return (
-    <View className="py-2">
+    <View className="py-2 mb-2">
       <ScrollView
         ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 24 }}
         keyboardShouldPersistTaps="handled"
         accessibilityRole="menu"
-        accessibilityLabel="Category filters"
       >
-        {/* "All" is always first */}
         <Pill
           label={ALL_LABEL}
           isActive={activeCategory === null}

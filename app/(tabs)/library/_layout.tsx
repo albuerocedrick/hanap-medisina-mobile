@@ -24,6 +24,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import React from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
 
@@ -45,13 +46,14 @@ const HEADER_BG = "#15803d"; // green-700
 
 function BackButton() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const handleBack = () => {
     try {
       if (router.canGoBack()) {
         router.back();
       } else {
-        // Fallback: if the stack is somehow empty, go to the library index
         router.replace("/library");
       }
     } catch (err) {
@@ -70,7 +72,7 @@ function BackButton() {
       <Ionicons
         name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
         size={24}
-        color={HEADER_TINT}
+        color={isDark ? "#A2CFA3" : HEADER_TINT}
       />
     </TouchableOpacity>
   );
@@ -106,14 +108,7 @@ export default function LibraryLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Plant Library",
-          // Index screen: no back button (it IS the root of this stack)
-          headerLeft: () => null,
-          headerRight: () => (
-            <View style={{ paddingRight: 4 }}>
-              <Ionicons name="leaf" size={20} color="rgba(255,255,255,0.7)" />
-            </View>
-          ),
+          headerShown: false,
         }}
       />
 
@@ -148,9 +143,8 @@ export default function LibraryLayout() {
           headerLeft: () => <BackButton />,
           // Slides up as a modal on iOS to signal a "focused task" UX
           presentation: Platform.OS === "ios" ? "modal" : "card",
-          // On iOS modal, override the header bg since modal sheets have
-          // their own surface — keep it consistent with the rest
-          headerStyle: { backgroundColor: HEADER_BG },
+          // headerStyle is intentionally omitted — comparison.tsx sets its own
+          // themed header background dynamically via Stack.Screen options.
         }}
       />
     </Stack>

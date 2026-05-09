@@ -76,3 +76,4 @@ export function PageTransition({ children, style, className }: PageTransitionPro
     </Animated.View>
   );
 }
+

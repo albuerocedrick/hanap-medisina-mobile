@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { selectFeedCategories, selectIsLoadingFeed, useFeedStore } from "../../store/useFeedStore";
 import { useLibraryStore } from "../../store/useLibraryStore";
 import { SkeletonChip } from "./HomeSkeletons";
@@ -43,9 +43,9 @@ export function CategoryChips() {
             key={category.id}
             onPress={() => handleChipPress(category.id)}
             activeOpacity={0.75}
-            className="flex-row items-center gap-2 bg-[#FAFEEF] dark:bg-[#121A14] border border-[#A2CFA3] dark:border-white/10 rounded-full px-4 py-[10px]"
+            className="flex-row items-center gap-2 bg-[#FAFEEF] dark:bg-[#121A14] border border-[#A2CFA3] dark:border-white/10 rounded-full px-4"
             style={{
-              minHeight: 42,
+              height: 36,
               shadowColor: "#22451C",
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.04,
@@ -55,7 +55,7 @@ export function CategoryChips() {
           >
             <Feather
               name={category.icon as any}
-              size={16}
+              size={14}
               color="rgba(162,207,163,0.85)"
             />
             <Text className="text-[#22451C] dark:text-white/80 font-semibold text-[13px]">

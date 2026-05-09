@@ -1,5 +1,7 @@
+import { useColorScheme } from "nativewind";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Text, TouchableOpacity, View } from "react-native";
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSyncStore } from "../../store/useSyncStore";
 
 /**
@@ -20,6 +22,10 @@ export default function SyncStatusBanner() {
   const syncTotal = useSyncStore((s) => s.syncTotal);
   const syncError = useSyncStore((s) => s.syncError);
   const clearSyncError = useSyncStore((s) => s.clearSyncError);
+
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const insets = useSafeAreaInsets();
 
   // "showSuccess" is a local transient state — we detect when sync just finished
   const [showSuccess, setShowSuccess] = useState(false);
@@ -53,50 +59,130 @@ export default function SyncStatusBanner() {
   if (!isVisible) return null;
 
   // ── Resolve display based on state priority ─────────────────────────────
-  let bgColor = "bg-blue-600";
+  let accentColor = "#4D8035"; // syncing — green
+  let bgColor = isDark ? "rgba(34,69,28,0.92)" : "rgba(250,254,239,0.95)";
   let icon = "☁️";
   let message = `Syncing ${syncProgress} of ${syncTotal}...`;
 
   if (syncError) {
-    bgColor = "bg-red-500";
+    accentColor = "#ef4444";
+    bgColor = isDark ? "rgba(60,10,10,0.92)" : "rgba(255,245,245,0.97)";
     icon = "⚠️";
     message = "Sync interrupted. Tap to dismiss.";
   } else if (showSuccess) {
-    bgColor = "bg-green-600";
+    accentColor = "#22451C";
+    bgColor = isDark ? "rgba(20,50,20,0.92)" : "rgba(240,252,240,0.97)";
     icon = "✅";
     message = "All scans saved to cloud!";
   }
 
+  const textColor = isDark ? "#F8FAFC" : "#22451C";
+  const subTextColor = isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)";
+
   return (
     <Animated.View
-      style={{ transform: [{ translateY: slideAnim }] }}
-      className="absolute top-0 left-0 right-0 z-50"
+      style={[
+        styles.container,
+        {
+          top: insets.top + 12,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
     >
       <TouchableOpacity
         activeOpacity={syncError ? 0.7 : 1}
         onPress={syncError ? clearSyncError : undefined}
-        className={`${bgColor} px-5 pt-12 pb-4 flex-row items-center gap-3`}
+        style={[
+          styles.pill,
+          {
+            backgroundColor: bgColor,
+            borderColor: isDark
+              ? "rgba(255,255,255,0.1)"
+              : "rgba(34,69,28,0.12)",
+          },
+        ]}
       >
-        <Text className="text-lg">{icon}</Text>
-        <Text className="text-white font-semibold flex-1 text-sm">
+        {/* Left: icon */}
+        <Text style={styles.icon}>{icon}</Text>
+
+        {/* Center: message */}
+        <Text
+          style={[styles.message, { color: textColor }]}
+          numberOfLines={1}
+        >
           {message}
         </Text>
+
+        {/* Right: progress count */}
         {isRunningSync && (
-          <Text className="text-white/70 text-xs">
+          <Text style={[styles.progress, { color: subTextColor }]}>
             {syncProgress}/{syncTotal}
           </Text>
         )}
       </TouchableOpacity>
 
-      {/* Thin progress bar at the bottom of the banner */}
+      {/* Thin accent progress bar at the bottom of the pill */}
       {isRunningSync && syncTotal > 0 && (
-        <View className="h-1 bg-blue-800">
+        <View style={[styles.progressTrack, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(34,69,28,0.08)" }]}>
           <View
-            className="h-1 bg-white"
-            style={{ width: `${(syncProgress / syncTotal) * 100}%` }}
+            style={[
+              styles.progressFill,
+              {
+                width: `${(syncProgress / syncTotal) * 100}%`,
+                backgroundColor: accentColor,
+              },
+            ]}
           />
         </View>
       )}
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    zIndex: 999,
+    alignItems: "center",
+  },
+  pill: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  icon: {
+    fontSize: 16,
+  },
+  message: {
+    flex: 1,
+    fontFamily: "Quicksand_600SemiBold",
+    fontSize: 13,
+  },
+  progress: {
+    fontFamily: "Quicksand_500Medium",
+    fontSize: 12,
+  },
+  progressTrack: {
+    width: "100%",
+    height: 3,
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 3,
+    borderRadius: 2,
+  },
+});

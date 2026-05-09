@@ -1,37 +1,43 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
+import { useColorScheme } from "nativewind";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
+  Keyboard,
   RefreshControl,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // 🌟 IMPORT PAGE TRANSITION
-import { PageTransition } from "../../../src/components/ui/PageTransition";
+import { PageTransition } from "@/src/components/ui/PageTransition";
 
 // Components
-import { ScanDetailSheet } from "../../../src/components/history/scan-detail-sheet";
-import { FilterPills } from "../../../src/components/library/filter-pills";
-import { PlantCard } from "../../../src/components/library/plant-card";
-import { SearchBar } from "../../../src/components/library/search-bar";
+import { ScanDetailSheet } from "@/src/components/history/scan-detail-sheet";
+import { FilterPills } from "@/src/components/library/filter-pills";
+import { PlantCard } from "@/src/components/library/plant-card";
+import { SearchBar } from "@/src/components/library/search-bar";
 
 // Stores
-import { useLibraryStore } from "../../../src/store/useLibraryStore";
+import { useLibraryStore } from "@/src/store/useLibraryStore";
 import {
   selectIsOnline,
   useNetworkStore,
-} from "../../../src/store/useNetworkStore";
+} from "@/src/store/useNetworkStore";
 
 export default function LibraryFeed() {
   const params = useLocalSearchParams();
   const scanIdFromParams = params?.scanId as string | undefined;
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
+
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   useEffect(() => {
     if (scanIdFromParams) {
@@ -40,6 +46,7 @@ export default function LibraryFeed() {
   }, [scanIdFromParams]);
 
   const isOnline = useNetworkStore(selectIsOnline);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const plants = useLibraryStore((s) => s.plants);
   const favorites = useLibraryStore((s) => s.favorites);
@@ -79,8 +86,11 @@ export default function LibraryFeed() {
     if (isLoadingPlants && displayedPlants.length === 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
-          <ActivityIndicator size="large" color="#16a34a" />
-          <Text className="text-gray-500 mt-4 text-center font-medium">
+          <ActivityIndicator size="large" color={isDark ? "#A2CFA3" : "#22451C"} />
+          <Text 
+            style={{ color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_500Medium" }}
+            className="mt-4 text-center"
+          >
             Loading plant library...
           </Text>
         </View>
@@ -90,20 +100,30 @@ export default function LibraryFeed() {
     if (plantsError) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
-          <View className="w-16 h-16 bg-red-50 rounded-full items-center justify-center mb-4">
-            <Ionicons name="alert-circle-outline" size={32} color="#dc2626" />
+          <View 
+            style={{ 
+              width: 56, height: 56, borderRadius: 28, 
+              backgroundColor: isDark ? "rgba(239,68,68,0.1)" : "rgba(239,68,68,0.05)",
+              borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(239,68,68,0.3)" : "rgba(239,68,68,0.2)",
+              alignItems: "center", justifyContent: "center", marginBottom: 16 
+            }}
+          >
+            <Ionicons name="alert-circle-outline" size={28} color="#ef4444" />
           </View>
-          <Text className="text-gray-900 font-semibold text-lg text-center">
+          <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 22, color: isDark ? "#F8FAFC" : "#22451C", textAlign: "center" }}>
             Failed to Load Library
           </Text>
-          <Text className="text-gray-500 mt-2 text-center mb-6">
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)", textAlign: "center", marginTop: 8, marginBottom: 24 }}>
             {plantsError.message}
           </Text>
           <TouchableOpacity
             onPress={handleRetry}
-            className="bg-green-600 px-6 py-3 rounded-xl active:bg-green-700"
+            style={{
+              backgroundColor: isDark ? "#22451C" : "#A2CFA3",
+              paddingHorizontal: 24, paddingVertical: 12, borderRadius: 16
+            }}
           >
-            <Text className="text-white font-medium">Try Again</Text>
+            <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "#F8FAFC" : "#22451C" }}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -112,15 +132,21 @@ export default function LibraryFeed() {
     if (!isOnline && plants.length === 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
-          <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-            <Ionicons name="cloud-offline-outline" size={32} color="#9CA3AF" />
+          <View 
+            style={{ 
+              width: 56, height: 56, borderRadius: 28, 
+              backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.15)",
+              borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(162,207,163,0.5)",
+              alignItems: "center", justifyContent: "center", marginBottom: 16 
+            }}
+          >
+            <Ionicons name="cloud-offline-outline" size={28} color={isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)"} />
           </View>
-          <Text className="text-gray-900 font-semibold text-lg text-center">
+          <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 22, color: isDark ? "#F8FAFC" : "#22451C", textAlign: "center" }}>
             No Cached Plants Yet
           </Text>
-          <Text className="text-gray-500 mt-2 text-center">
-            Connect to the internet once to download the plant library for offline
-            use.
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)", textAlign: "center", marginTop: 8, lineHeight: 20 }}>
+            Connect to the internet once to download the plant library for offline use.
           </Text>
         </View>
       );
@@ -129,15 +155,21 @@ export default function LibraryFeed() {
     if (searchQuery.length > 0) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
-          <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-            <Ionicons name="search-outline" size={32} color="#9CA3AF" />
+          <View 
+            style={{ 
+              width: 56, height: 56, borderRadius: 28, 
+              backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.15)",
+              borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(162,207,163,0.5)",
+              alignItems: "center", justifyContent: "center", marginBottom: 16 
+            }}
+          >
+            <Ionicons name="search-outline" size={28} color={isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)"} />
           </View>
-          <Text className="text-gray-900 font-semibold text-lg text-center">
+          <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 22, color: isDark ? "#F8FAFC" : "#22451C", textAlign: "center" }}>
             No matching plants
           </Text>
-          <Text className="text-gray-500 mt-2 text-center">
-            We couldn't find anything matching "{searchQuery}". Try adjusting
-            your search or category filter.
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)", textAlign: "center", marginTop: 8, lineHeight: 20 }}>
+            We couldn't find anything matching "{searchQuery}". Try adjusting your search or category filter.
           </Text>
         </View>
       );
@@ -146,15 +178,21 @@ export default function LibraryFeed() {
     if (activeCategory) {
       return (
         <View className="flex-1 items-center justify-center pt-20 px-6">
-          <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-            <Ionicons name="leaf-outline" size={32} color="#9CA3AF" />
+          <View 
+            style={{ 
+              width: 56, height: 56, borderRadius: 28, 
+              backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(162,207,163,0.15)",
+              borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(162,207,163,0.5)",
+              alignItems: "center", justifyContent: "center", marginBottom: 16 
+            }}
+          >
+            <Ionicons name="leaf-outline" size={28} color={isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.5)"} />
           </View>
-          <Text className="text-gray-900 font-semibold text-lg text-center">
+          <Text style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 22, color: isDark ? "#F8FAFC" : "#22451C", textAlign: "center" }}>
             Category is empty
           </Text>
-          <Text className="text-gray-500 mt-2 text-center">
-            There are currently no plants available under the "{activeCategory}"
-            category.
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)", textAlign: "center", marginTop: 8, lineHeight: 20 }}>
+            There are currently no plants available under the "{activeCategory}" category.
           </Text>
         </View>
       );
@@ -165,23 +203,26 @@ export default function LibraryFeed() {
 
   const renderHeader = () => (
     <View className="pb-2">
-      <SearchBar />
-      <FilterPills />
-
       {!isOnline && (
-        <View className="mx-4 mt-2 mb-1 bg-blue-50 border border-blue-200 rounded-lg flex-row items-center p-3">
-          <Ionicons name="archive-outline" size={18} color="#1d4ed8" />
-          <Text className="text-blue-800 ml-2 text-sm flex-1">
-            Offline — showing cached library. Some details may be unavailable.
+        <View 
+          style={{
+            backgroundColor: isDark ? "rgba(59, 130, 246, 0.05)" : "rgba(59, 130, 246, 0.1)",
+            borderColor: isDark ? "rgba(59, 130, 246, 0.2)" : "rgba(59, 130, 246, 0.3)",
+            borderWidth: StyleSheet.hairlineWidth,
+          }}
+          className="mx-6 mt-4 mb-2 rounded-2xl flex-row items-center p-3"
+        >
+          <Ionicons name="archive-outline" size={16} color={isDark ? "#93c5fd" : "#1d4ed8"} />
+          <Text style={{ fontFamily: "Quicksand_500Medium", color: isDark ? "#93c5fd" : "#1d4ed8", fontSize: 13, marginLeft: 8, flex: 1 }}>
+            Offline — showing cached library.
           </Text>
         </View>
       )}
 
       {displayedPlants.length > 0 && (
-        <View className="mx-4 mt-2 mb-1 flex-row items-center justify-between">
-          <Text className="text-gray-500 text-xs font-medium uppercase tracking-wider">
-            {displayedPlants.length}{" "}
-            {displayedPlants.length === 1 ? "Plant" : "Plants"} Found
+        <View className="mx-6 mt-4 mb-2 flex-row items-center justify-between">
+          <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)", fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            {displayedPlants.length} {displayedPlants.length === 1 ? "Plant" : "Plants"} Found
           </Text>
         </View>
       )}
@@ -189,44 +230,55 @@ export default function LibraryFeed() {
   );
 
   return (
-    // 🌟 WRAPPED WITH <PageTransition>
-    <PageTransition className="flex-1 bg-gray-50">
+    <PageTransition className="flex-1 bg-[#FAFEEF] dark:bg-[#0B120B]">
       <SafeAreaView edges={["top"]} className="flex-1">
-        <View className="px-6 py-4 bg-gray-50 flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              activeOpacity={0.7}
-              className="mr-3 bg-white overflow-hidden"
-            >
-              <Image
-                source={require("../../../assets/images/library-mariherb.png")}
-                style={{ width: 150, height: 150 }}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-            <Text className="text-2xl font-bold text-gray-900">Library</Text>
-          </View>
-          <Ionicons name="library-outline" size={24} color="#16a34a" />
+        <View className="px-6 py-5 flex-row items-center justify-between">
+          <Text 
+            style={{
+              fontSize: 28,
+              fontFamily: "serif",
+              fontStyle: "italic",
+              fontWeight: "500",
+              letterSpacing: 0.3,
+              color: isDark ? "#F8FAFC" : "#22451C",
+            }}
+          >
+            Library
+          </Text>
         </View>
 
-        <FlatList
-          data={displayedPlants}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PlantCard plant={item} />}
-          ListHeaderComponent={renderHeader}
-          ListEmptyComponent={renderEmptyState}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoadingPlants && displayedPlants.length > 0}
-              onRefresh={handleRefresh}
-              colors={["#16a34a"]}
-              tintColor="#16a34a"
-              enabled={isOnline}
+        <SearchBar onFocusChange={setIsSearchFocused} />
+        <FilterPills />
+
+        <View className="flex-1 relative">
+          <FlatList
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={() => Keyboard.dismiss()}
+            data={displayedPlants}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <PlantCard plant={item} />}
+            ListHeaderComponent={renderHeader}
+            ListEmptyComponent={renderEmptyState}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 140 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoadingPlants && displayedPlants.length > 0}
+                onRefresh={handleRefresh}
+                colors={["#A2CFA3"]}
+                tintColor={isDark ? "#A2CFA3" : "#22451C"}
+                enabled={isOnline}
+              />
+            }
+          />
+          
+          {isSearchFocused && (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => Keyboard.dismiss()}
             />
-          }
-        />
+          )}
+        </View>
 
         <ScanDetailSheet
           visible={selectedScanId !== null}

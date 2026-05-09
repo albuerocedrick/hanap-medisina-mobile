@@ -1,5 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
 import React from "react";
-import { Modal, Text, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSyncStore } from "../../store/useSyncStore";
 
 interface Props {
@@ -22,6 +24,9 @@ export default function SyncPromptModal({ visible, onDismiss }: Props) {
   const runSync = useSyncStore((s) => s.runSync);
   const isRunningSync = useSyncStore((s) => s.isRunningSync);
 
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   // If there's nothing to sync or sync already running, don't show
   if (!visible || pendingCount === 0 || isRunningSync) return null;
 
@@ -30,50 +35,176 @@ export default function SyncPromptModal({ visible, onDismiss }: Props) {
     runSync();   // Background sync starts; SyncStatusBanner will show progress
   };
 
+  const bg = isDark ? "#0B120B" : "#FAFEEF";
+  const cardBg = isDark ? "#111C11" : "#FFFFFF";
+  const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(34,69,28,0.1)";
+  const titleColor = isDark ? "#F8FAFC" : "#22451C";
+  const bodyColor = isDark ? "rgba(248,250,252,0.6)" : "rgba(34,69,28,0.6)";
+
   return (
     <Modal transparent visible={visible} animationType="fade">
-      <View className="flex-1 bg-black/60 justify-center items-center p-4">
-        <View className="bg-white rounded-3xl w-full max-w-sm p-8 items-center shadow-2xl">
-          {/* Icon */}
-          <View className="w-20 h-20 bg-blue-50 rounded-full items-center justify-center mb-6">
-            <Text className="text-4xl">☁️</Text>
+      <View style={[styles.backdrop, { backgroundColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)" }]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: cardBg,
+              borderColor: border,
+              shadowColor: isDark ? "#000" : "#22451C",
+            },
+          ]}
+        >
+          {/* Icon badge */}
+          <View
+            style={[
+              styles.iconBadge,
+              { backgroundColor: isDark ? "rgba(34,69,28,0.3)" : "rgba(34,69,28,0.08)" },
+            ]}
+          >
+            <Ionicons
+              name="cloud-upload-outline"
+              size={32}
+              color={isDark ? "#A2CFA3" : "#22451C"}
+            />
           </View>
 
           {/* Title */}
-          <Text className="text-2xl font-black text-gray-900 mb-3 text-center tracking-tight">
+          <Text style={[styles.title, { color: titleColor }]}>
             You're Back Online!
           </Text>
 
           {/* Description */}
-          <Text className="text-gray-500 text-center mb-8 text-base leading-relaxed px-2">
+          <Text style={[styles.body, { color: bodyColor }]}>
             You have{" "}
-            <Text className="font-bold text-gray-800">{pendingCount}</Text>{" "}
+            <Text style={{ fontFamily: "Quicksand_700Bold", color: titleColor }}>
+              {pendingCount}
+            </Text>{" "}
             offline {pendingCount === 1 ? "scan" : "scans"} waiting to be
             backed up to your account.
           </Text>
 
-          {/* Actions */}
-          <View className="w-full">
-            <TouchableOpacity
-              onPress={handleSyncNow}
-              className="w-full bg-blue-600 py-4 rounded-2xl items-center shadow-lg shadow-blue-600/30 mb-3 active:scale-95"
-            >
-              <Text className="text-white font-bold text-lg tracking-wide">
-                Sync Now
-              </Text>
-            </TouchableOpacity>
+          {/* Divider */}
+          <View style={[styles.divider, { backgroundColor: border }]} />
 
-            <TouchableOpacity
-              onPress={onDismiss}
-              className="w-full py-4 rounded-2xl items-center bg-gray-100 active:bg-gray-200"
+          {/* Actions */}
+          <TouchableOpacity
+            onPress={handleSyncNow}
+            style={[
+              styles.primaryBtn,
+              { backgroundColor: isDark ? "#A2CFA3" : "#22451C" },
+            ]}
+            activeOpacity={0.85}
+          >
+            <Ionicons
+              name="cloud-upload-outline"
+              size={16}
+              color={isDark ? "#0B120B" : "#FAFEEF"}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.primaryBtnText,
+                { color: isDark ? "#0B120B" : "#FAFEEF" },
+              ]}
             >
-              <Text className="text-gray-500 font-bold text-lg">
-                Maybe Later
-              </Text>
-            </TouchableOpacity>
-          </View>
+              Sync Now
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onDismiss}
+            style={[
+              styles.secondaryBtn,
+              {
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.04)"
+                  : "rgba(34,69,28,0.04)",
+                borderColor: border,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.secondaryBtnText, { color: bodyColor }]}>
+              Maybe Later
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  card: {
+    width: "100%",
+    borderRadius: 32,
+    padding: 28,
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  iconBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontFamily: "serif",
+    fontStyle: "italic",
+    fontSize: 24,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  body: {
+    fontFamily: "Quicksand_500Medium",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  divider: {
+    width: "100%",
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 24,
+  },
+  primaryBtn: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
+  primaryBtnText: {
+    fontFamily: "Quicksand_700Bold",
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
+  secondaryBtn: {
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 18,
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  secondaryBtnText: {
+    fontFamily: "Quicksand_600SemiBold",
+    fontSize: 14,
+  },
+});

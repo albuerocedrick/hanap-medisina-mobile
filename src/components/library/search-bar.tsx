@@ -6,63 +6,56 @@
  * update (and any downstream filtering) is debounced to avoid thrashing.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 import {
   ActivityIndicator,
   Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { searchPlantsLocally } from "../../services/firebaseLibrary";
+import { searchPlantsLocally } from "@/src/services/firebaseLibrary";
 import {
   selectSearchQuery,
   useLibraryStore,
-} from "../../store/useLibraryStore";
-import { useNetworkStore } from "../../store/useNetworkStore";
-
-// ─────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────
+} from "@/src/store/useLibraryStore";
+import { useNetworkStore } from "@/src/store/useNetworkStore";
 
 const DEBOUNCE_MS = 320;
 
-// ─────────────────────────────────────────────
-// PROPS
-// ─────────────────────────────────────────────
-
 interface SearchBarProps {
   placeholder?: string;
-  /** Override debounce delay (ms). Useful in tests. */
   debounceMs?: number;
-  /** Called after the debounce fires with the committed query string. */
   onSearch?: (query: string) => void;
+  onFocusChange?: (focused: boolean) => void;
 }
-
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
 
 export function SearchBar({
   placeholder = "Search plants or categories…",
   debounceMs = DEBOUNCE_MS,
   onSearch,
+  onFocusChange,
 }: SearchBarProps) {
-  // Read the committed store value to stay in sync if cleared externally
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   const committedQuery = useLibraryStore(selectSearchQuery);
   const setSearchQuery = useLibraryStore((s) => s.setSearchQuery);
 
-  // Local state gives instant keystroke feedback without triggering
-  // store re-renders (and downstream filter recalculations) on every character
   const [localValue, setLocalValue] = useState<string>(committedQuery);
   const [isBusy, setIsBusy] = useState<boolean>(false);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const router = useRouter();
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
 
-  // Suggestions: derive from the library's plant list (or favorites when offline)
   const plants = useLibraryStore((s) => s.plants);
   const favorites = useLibraryStore((s) => s.favorites);
   const isOnline = useNetworkStore((s) => s.isOnline);
@@ -86,15 +79,12 @@ export function SearchBar({
     }
   }, [localValue, sourceList]);
 
-  // Keep local value in sync when the store is reset externally
-  // (e.g. user taps a filter pill that also clears the search)
   useEffect(() => {
     if (committedQuery === "" && localValue !== "") {
       setLocalValue("");
     }
   }, [committedQuery]);
 
-  // ── Debounced commit ──────────────────────────────────────────────────────
   const commitQuery = useCallback(
     (text: string) => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -106,8 +96,6 @@ export function SearchBar({
           setSearchQuery(text);
           onSearch?.(text);
         } catch (err) {
-          // setSearchQuery is synchronous Zustand — shouldn't throw,
-          // but guard defensively so a bad callback doesn't crash the input
           console.error("[SearchBar] Failed to commit search query:", err);
         } finally {
           setIsBusy(false);
@@ -117,7 +105,6 @@ export function SearchBar({
     [setSearchQuery, onSearch, debounceMs],
   );
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -139,87 +126,96 @@ export function SearchBar({
     } catch (err) {
       console.error("[SearchBar] Failed to clear search query:", err);
     }
-    // Return focus to the input after clearing
     inputRef.current?.focus();
   };
 
   const hasValue = localValue.length > 0;
 
   return (
-    <View className="mx-4 my-2">
+    <View className="mx-6 my-2 z-50">
       <View
-        className={`
-          flex-row items-center bg-white rounded-2xl px-4 py-3
-          border shadow-sm
-          ${hasValue ? "border-green-600" : "border-gray-200"}
-        `}
-        style={
-          Platform.OS === "ios"
-            ? {
-                shadowColor: "#000",
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 2 },
-              }
-            : { elevation: 2 }
-        }
+        style={{
+          flexDirection: "row", alignItems: "center",
+          backgroundColor: "transparent",
+          borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: hasValue 
+            ? (isDark ? "rgba(162,207,163,0.8)" : "#A2CFA3") 
+            : (isDark ? "rgba(255,255,255,0.12)" : "rgba(162,207,163,0.5)")
+        }}
       >
-        {/* Leading icon */}
         <Ionicons
           name="search-outline"
           size={18}
-          color={hasValue ? "#16a34a" : "#9CA3AF"}
+          color={hasValue ? (isDark ? "#A2CFA3" : "#22451C") : (isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)")}
           style={{ marginRight: 8 }}
         />
 
-        {/* Input */}
         <TextInput
           ref={inputRef}
-          className="flex-1 text-gray-800 text-sm leading-5"
+          style={{
+            flex: 1, fontFamily: "Quicksand_600SemiBold", fontSize: 14,
+            color: isDark ? "#F8FAFC" : "#22451C"
+          }}
           value={localValue}
           onChangeText={handleChangeText}
+          onFocus={() => { setIsFocused(true); onFocusChange?.(true); }}
+          onBlur={() => { setIsFocused(false); onFocusChange?.(false); }}
           placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={isDark ? "rgba(248,250,252,0.4)" : "rgba(34,69,28,0.5)"}
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}
-          clearButtonMode="never" // We use our own clear button for cross-platform parity
-          accessibilityLabel="Search plants"
-          accessibilityHint="Type to filter the plant library"
+          clearButtonMode="never"
         />
 
-        {/* Trailing: busy indicator OR clear button */}
         {isBusy && hasValue ? (
           <ActivityIndicator
             size="small"
-            color="#16a34a"
+            color={isDark ? "#A2CFA3" : "#22451C"}
             style={{ marginLeft: 8 }}
           />
         ) : hasValue ? (
-          <TouchableOpacity
-            onPress={handleClear}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Clear search"
-            accessibilityRole="button"
-          >
-            <View className="bg-gray-200 rounded-full w-5 h-5 items-center justify-center">
-              <Ionicons name="close" size={12} color="#6B7280" />
+          <TouchableOpacity onPress={handleClear} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <View 
+              style={{
+                backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(34,69,28,0.1)",
+                width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center"
+              }}
+            >
+              <Ionicons name="close" size={12} color={isDark ? "#F8FAFC" : "#22451C"} />
             </View>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {/* Suggestions dropdown */}
-      {hasValue && suggestions.length > 0 && (
-        <View className="mt-2 bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
-          {suggestions.map((s) => (
+      {isFocused && hasValue && suggestions.length > 0 && (
+        <Animated.View 
+          entering={FadeInDown.duration(280).springify().damping(24)}
+          exiting={FadeOut.duration(160)}
+          style={{
+            position: "absolute", top: 56, left: 0, right: 0,
+            backgroundColor: isDark ? "#111C11" : "#F4FAE8",
+            borderRadius: 18, overflow: "hidden",
+            borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(34,69,28,0.1)",
+            shadowColor: "#000", shadowOpacity: isDark ? 0.35 : 0.1, shadowRadius: 28, shadowOffset: { width: 0, height: 16 },
+            elevation: 12, zIndex: 100
+          }}
+        >
+          {/* Header */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(34,69,28,0.07)" }}>
+            <Text style={{ fontSize: 10, fontFamily: "Quicksand_700Bold", letterSpacing: 1.4, textTransform: "uppercase", color: isDark ? "rgba(226,232,240,0.75)" : "#4D8035" }}>
+              Suggestions
+            </Text>
+          </View>
+          {suggestions.map((s, index) => (
             <TouchableOpacity
               key={s.id}
-              activeOpacity={0.7}
-              onPress={() => {
-                // Immediately set localValue and commit to store
+              activeOpacity={0.65}
+              // Prevent keyboard dismissal from blocking the tap
+              onPressIn={() => {
                 setLocalValue(s.name);
-                // Cancel debounce and commit immediately
                 if (debounceTimer.current) clearTimeout(debounceTimer.current);
                 setIsBusy(true);
                 try {
@@ -228,24 +224,35 @@ export function SearchBar({
                 } finally {
                   setIsBusy(false);
                 }
-                // Keep focus on the input for further typing
-                inputRef.current?.focus();
+                inputRef.current?.blur();
+                router.push(`/(tabs)/library/${s.id}`);
               }}
-              className="px-4 py-3 border-b border-gray-100"
+              style={{
+                flexDirection: "row", alignItems: "center",
+                paddingHorizontal: 16, paddingVertical: 12,
+                borderBottomWidth: index === suggestions.length - 1 ? 0 : 1,
+                borderBottomColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(34,69,28,0.06)"
+              }}
             >
-              <View className="flex-row items-center justify-between">
-                <View>
-                  <Text className="text-gray-800 font-medium">{s.name}</Text>
-                  {s.scientificName ? (
-                    <Text className="text-gray-400 text-xs">
-                      {s.scientificName}
-                    </Text>
-                  ) : null}
-                </View>
+              {/* Icon */}
+              <View style={{ width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(77,128,53,0.08)", marginRight: 12 }}>
+                <Feather name="book-open" size={15} color={isDark ? "rgba(226,232,240,0.85)" : "#4D8035"} />
               </View>
+
+              {/* Text */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: "Quicksand_700Bold", color: isDark ? "rgba(248,250,252,0.92)" : "#1a3312", fontSize: 14, marginBottom: 1 }}>{s.name}</Text>
+                {s.scientificName ? (
+                  <Text style={{ fontFamily: "Quicksand_500Medium", fontStyle: "italic", color: isDark ? "rgba(226,232,240,0.55)" : "rgba(34,69,28,0.45)", fontSize: 11 }} numberOfLines={1}>
+                    {s.scientificName}
+                  </Text>
+                ) : null}
+              </View>
+
+              <Feather name="chevron-right" size={14} color={isDark ? "rgba(226,232,240,0.45)" : "rgba(34,69,28,0.3)"} />
             </TouchableOpacity>
           ))}
-        </View>
+        </Animated.View>
       )}
     </View>
   );

@@ -3,8 +3,9 @@
  * Stat pill row (Total Scans + Member Since).
  */
 import { Feather } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
 import React from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 interface StatPillProps {
   icon: React.ComponentProps<typeof Feather>["name"];
@@ -13,13 +14,38 @@ interface StatPillProps {
 }
 
 function StatPill({ icon, label, value }: StatPillProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   return (
-    <View className="flex-1 items-center bg-white border border-slate-100 rounded-2xl py-4 px-2 shadow-sm">
-      <View className="w-9 h-9 bg-emerald-50 rounded-full items-center justify-center mb-2">
-        <Feather name={icon} size={16} color="#16a34a" />
+    <View className="flex-1 items-center py-2 px-2">
+      <View 
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#FAFEEF",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(162,207,163,0.8)",
+          marginBottom: 8,
+        }}
+      >
+        <Feather name={icon} size={15} color={isDark ? "rgba(248,250,252,0.85)" : "#22451C"} />
       </View>
-      <Text className="text-xl font-extrabold text-slate-800">{value}</Text>
-      <Text className="text-[11px] font-medium text-slate-400 mt-0.5 text-center">{label}</Text>
+      <Text 
+        style={{ color: isDark ? "#F8FAFC" : "#22451C", fontFamily: "Quicksand_700Bold" }} 
+        className="text-xl"
+      >
+        {value}
+      </Text>
+      <Text 
+        style={{ color: isDark ? "rgba(248,250,252,0.5)" : "rgba(34,69,28,0.6)", fontFamily: "Quicksand_600SemiBold" }} 
+        className="text-[11px] mt-0.5 text-center"
+      >
+        {label}
+      </Text>
     </View>
   );
 }

@@ -13,6 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useCameraStore } from "../../src/store/useCameraStore";
 import * as Haptics from "expo-haptics";
+import { ScanLine } from "lucide-react-native";
 
 // ─── Design Tokens ───────────────────────────────────────────
 const tokens = {
@@ -107,7 +108,7 @@ function TabItem({
               {isProcessing ? (
                 <ActivityIndicator color={isDark ? tokens.greenDark : "#FAFEEF"} size="small" />
               ) : (
-                <Ionicons name={tab.iconActive} size={22} color={isDark ? "rgba(248,250,252,0.9)" : "#FAFEEF"} />
+                <ScanLine size={24} color={isDark ? "rgba(248,250,252,0.9)" : "#FAFEEF"} strokeWidth={2.2} />
               )}
             </View>
           </Animated.View>
