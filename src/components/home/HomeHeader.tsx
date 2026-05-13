@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 import React, { useEffect } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -117,7 +117,7 @@ export function HomeHeader() {
           <Feather
             name={isOnline ? "cloud" : "cloud-off"}
             size={18}
-            color={isOnline ? (isDark ? "rgba(226,232,240,0.85)" : "#0369A1") : (isDark ? "rgba(248,113,113,0.9)" : "#f87171")}
+            color={isOnline ? (isDark ? "rgba(226,232,240,0.85)" : "#22451C") : (isDark ? "rgba(248,113,113,0.9)" : "#f87171")}
           />
         </IconButton>
 
@@ -167,21 +167,13 @@ export function HomeHeader() {
         )}
       </View>
 
-      {/* ── Center: Brand Title ── */}
+      {/* ── Center: Brand Logo ── */}
       <View style={{ alignItems: "center", flex: 1, marginHorizontal: 10 }}>
-        <Text
-          numberOfLines={1}
-          style={{
-            fontSize: 34,
-            fontWeight: "500",
-            letterSpacing: 0.6,
-            color: isDark ? "#F8FAFC" : "#111827",
-            fontFamily: "serif",
-            fontStyle: "italic",
-          }}
-        >
-          Hanap
-        </Text>
+        <Image
+          source={require("../../../assets/images/logo-no-bg.png")}
+          style={{ width: 40, height: 40, tintColor: isDark ? "#F8FAFC" : "#22451C" }}
+          resizeMode="contain"
+        />
       </View>
 
       {/* ── Right: Theme Toggle ── */}
@@ -190,7 +182,7 @@ export function HomeHeader() {
           <Ionicons
             name={isDark ? "leaf-outline" : "leaf"}
             size={16}
-            color={isDark ? "rgba(226,232,240,0.9)" : "#16A34A"}
+            color={isDark ? "rgba(226,232,240,0.9)" : "#22451C"}
           />
         </Animated.View>
       </IconButton>
