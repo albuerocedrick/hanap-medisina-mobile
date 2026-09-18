@@ -12,7 +12,7 @@ export const useTFLite = () => {
     async function setupModel() {
       try {
         const loadedModel = await loadTensorflowModel(
-          require("../../assets/model/plant_model.tflite"),
+          require("../../assets/model/medicinal_model.tflite"),
         );
         setModel(loadedModel);
 
